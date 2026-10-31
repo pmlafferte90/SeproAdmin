@@ -1,0 +1,205 @@
+@import "_variables";
+
+@import "coreui/style.scss";
+
+@import "_custom";
+@import "_layout";
+@import "searchFilter";
+
+:root {
+    --sepro: #19346A;
+}
+
+// Estilos del dasboard
+
+/* Establece la misma altura para todos los cards y mejora la responsividad */
+.card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Mejora el diseño de la tabla para dispositivos móviles */
+.table-responsive {
+    overflow-x: auto;
+    /* Asegura que la tabla sea desplazable en pantallas pequeñas */
+}
+
+/* Espaciado de las filas de la tabla */
+.table th,
+.table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+
+/* Espaciado entre las tarjetas */
+.row>.col-sm-6 {
+    padding-bottom: 15px;
+    /* Espaciado vertical entre columnas */
+}
+
+@media (max-width: 576px) {
+    .col-sm-6 {
+        flex: 0 0 100%;
+        /* Hace que las tarjetas ocupen todo el ancho en móviles */
+        max-width: 100%;
+        /* Asegura que no excedan el ancho de pantalla */
+    }
+}
+
+.btn-editar {
+    background-color: #EBA75B;
+    border-color: #EBA75B;
+    color: white;
+}
+
+.btn-area-empresa {
+    background-color: #EB8E5B;
+    border-color: #EB8E5B;
+    color: white;
+}
+
+.btn-control-extintores {
+    background-color: #EBBB5B;
+    border-color: #EBBB5B;
+    color: white;
+}
+
+.btn-eliminar {
+    background-color: #EB5B5B;
+    border-color: #EB5B5B;
+    color: white;
+}
+
+.btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.nav-group {
+    overflow: auto;
+    /* Permitir el desplazamiento */
+}
+
+/* Ocultar la barra de desplazamiento */
+.nav-group::-webkit-scrollbar {
+    display: none;
+    /* Oculta la barra de desplazamiento */
+}
+
+.nav-group-items {
+    transition: max-height 0.3s ease;
+    overflow: hidden;
+}
+
+.nav-group-expanded .nav-group-items {
+    overflow: hidden;
+}
+
+/* Cambiar el color de la página activa a gris oscuro */
+.pagination .page-item.active .page-link {
+    background-color: #343a40;
+    /* Gris oscuro */
+    border-color: #343a40;
+    /* Gris oscuro */
+    color: white;
+    /* Color del texto */
+}
+
+.pagination .page-item.active .page-link:hover {
+    background-color: #495057;
+    /* Un tono más claro para hover */
+}
+
+.sticky-column {
+    position: sticky;
+    right: 0;
+    background: white;
+    /* Fondo blanco para que no se vea el contenido detrás */
+    z-index: 2;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    /* Sombra para separar visualmente */
+}
+
+
+//estilos para formularios
+/* Estilo general del modal */
+.modal-content {
+    border-radius: 12px;
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.btn-sepro {
+    background-color: var(--sepro);
+    color: #fff;
+    border: none;
+}
+
+.btn-sepro:hover {
+    background-color: #162d5a; /* una versión más oscura del sepro */
+    color: #fff;
+}
+
+.list-group-item.active {
+    background-color: var(--sepro) !important;
+    border-color: var(--sepro) !important;
+    color: #fff !important;
+}
+
+
+/* Alineación del botón guardar */
+.modal-footer {
+    justify-content: flex-end;
+}
+
+.sticky-col {
+    position: sticky;
+    right: 0;
+    background: #fff; /* asegúrate de que coincida con el fondo de la tabla */
+    z-index: 5;
+}
+
+/* Solo se aplicará a componentes Tom Select */
+.ts-wrapper.multi .ts-control {
+    min-height: 3rem !important ;
+    font-size: 0.92rem !important;
+    padding: 0.4rem 0.5rem !important;
+}
+
+.ts-dropdown .optgroup-header {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    background-color: #f8f9fa;
+    padding: 6px 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.ts-dropdown {
+    background-color: #ffffff !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12) !important;
+}
+
+.ts-dropdown .option {
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.88rem !important;
+}
+
+.ts-dropdown .option strong {
+    color: #1d3557;
+}
+
+.ts-control .item {
+    background-color: #e9ecef !important;
+    border-radius: 0.2rem !important;
+    margin: 2px !important;
+    padding: 2px 6px !important;
+    font-size: 12px !important;
+}

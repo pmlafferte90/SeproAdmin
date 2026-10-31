@@ -1,0 +1,23 @@
+.search_column-popup {
+    background: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    padding: 5px;
+    z-index: 1000;
+    width: 200px;
+    display: none;  /* Asegura que inicialmente no se vea hasta el click */
+}
+
+.search_column-popup.show {
+    display: block;  /* Solo se muestra cuando es visible */
+}
+
+.search_column-btn.active i {
+    color: blue; /* Cambia el color del ícono de lupa cuando está activo */
+}
+
+.no-results-row td {
+    text-align: center;
+    font-weight: bold;
+    color: #777;
+}
