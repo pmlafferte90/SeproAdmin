@@ -12,7 +12,9 @@ class TrustProxies extends Middleware
      *
      * @var array<int, string>|string|null
      */
-    protected $proxies;
+    // Detrás del proxy de Railway: confiar en X-Forwarded-* para que
+    // las URLs y redirects se generen con https
+    protected $proxies = '*';
 
     /**
      * The headers that should be used to detect proxies.
