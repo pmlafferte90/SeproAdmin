@@ -14,11 +14,19 @@ RUN npm run build
 
 ############################
 # Stage 2 — Dependencias PHP con Composer
+# (sobre php:8.2 para que coincida con el runtime; la imagen composer:2
+#  trae PHP flotante y rompe el lock cuando sube de versión)
 ############################
-FROM composer:2 AS vendor
+FROM php:8.2-cli-bookworm AS vendor
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN apt-get update && apt-get install -y --no-install-recommends git unzip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+# gd/exif no existen en esta etapa (solo instala paquetes, no ejecuta la app);
+# el runtime sí las compila
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction \
+    --ignore-platform-req=ext-gd --ignore-platform-req=ext-exif
 COPY . .
 RUN composer dump-autoload --optimize --no-dev
 
