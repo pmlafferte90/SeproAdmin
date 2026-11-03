@@ -2,18 +2,27 @@
 
 namespace App\Services;
 
-use App\Models\Cliente;
 use App\Models\Representante;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RepresentanteService
 {
+
+    public function __construct(private UsuarioService $usuarioService)
+    {
+
+    }
+
     public function getRepresentanteById($id)
     {
         try {
-
-            $representante = Representante::with('localidades')->find($id);
+            $representante = Representante::with([
+                'localidades',
+                'emails'
+            ])
+            ->findOrFail($id);
 
             return $representante;
         } catch (\Exception $e) {
@@ -34,11 +43,12 @@ class RepresentanteService
                 'representante.apellido',
                 'representante.identificacion',
                 'representante.telefono',
-                'representante.correo',
+                DB::raw('(SELECT GROUP_CONCAT(email SEPARATOR ", ") FROM representante_emails WHERE representante_id = representante.id) as correo'),
                 'representante.estado',
                 'representante.fecha_creacion',
                 'representante.fecha_actualizacion',
                 'representante.ver_todas_localidades',
+                'representante.id_usuario',
                 'cliente.razon_social'
             )
             ->join('cliente','cliente.id','=','representante.id_cliente')
@@ -51,13 +61,18 @@ class RepresentanteService
                     ->orWhere('representante.telefono', 'like', "%{$buscar}%")
                     ->orWhere('representante.nombre', 'like', "%{$buscar}%")
                     ->orWhere('representante.apellido', 'like', "%{$buscar}%")
-                    ->orWhereHas('localidades', function ($q2) use ($buscar) {
-                        $q2->where('nombre', 'like', "%{$buscar}%");
-                    });
+                    ->orWhere(function ($q2) use ($buscar) {
+                      $q2->whereIn('representante.id', function ($subquery) use ($buscar) {
+                          $subquery->select('representante_localidad.id_representante')
+                              ->from('representante_localidad')
+                              ->join('cliente_localidad', 'cliente_localidad.id', '=', 'representante_localidad.id_localidad')
+                              ->where('cliente_localidad.nombre', 'like', "%{$buscar}%");
+                      });
+                  });
                 });
             }
 
-            $representantes = $query->with('localidades')->paginate($perPage)->appends([
+            $representantes = $query->with(['localidades', 'usuario'])->paginate($perPage)->appends([
                 'buscar' => $buscar,
                 'perPage' => $perPage,
             ]);
@@ -75,13 +90,14 @@ class RepresentanteService
             // Validar los datos del representante
             $request->validate([
                 'id_cliente' => 'required|exists:cliente,id',
-                'id_localidad' => 'required|array|min:1',
-                'id_localidad.*' => 'exists:cliente_localidad,id',
+                'id_localidad' => 'required_unless:ver_todas_localidades,true|array|min:1',
+                'id_localidad.*' => 'required_unless:ver_todas_localidades,true|exists:cliente_localidad,id',
                 'nombre' => 'required|string|max:50',
                 'apellido' => 'required|string|max:50',
-                'identificacion' => 'required|string|max:13|unique:representante,identificacion',
+                'identificacion' => 'required|string|max:13',
                 'telefono' => 'nullable|string|max:15',
-                'correo' => 'nullable|email|max:255',
+                //'email' => 'required|email|max:255|unique:representante,correo',
+                'emails.*' => 'email|max:255|distinct',
                 'ver_todas_localidades' => 'nullable|boolean',
             ]);
     
@@ -96,12 +112,22 @@ class RepresentanteService
                 'id_user' => $id_user, // Relación con el usuario creado
                 'identificacion' => $request->input('identificacion'),
                 'telefono' => $request->input('telefono'),
-                'correo' => $request->input('correo'),
+                'correo' => $request->input('email'),
                 'estado' => 1,
                 'fecha_creacion' => now(),
                 'id_usuario' => $id_usuario,
                 'ver_todas_localidades' => $request->boolean('ver_todas_localidades', false),
             ]);
+
+            // Asociar emails
+            $correos = $request->input('emails', []);
+
+            foreach ($correos as $idx => $mail) {
+                $representante->emails()->create([
+                    'email'     => $mail,
+                    'principal' => $idx === 0,
+                ]);
+            }    
 
             // Asociar localidades (muchos a muchos)
             $representante->localidades()->sync($request->input('id_localidad'));
@@ -114,7 +140,7 @@ class RepresentanteService
         } catch (\Exception $e) {
             return response()->json([
                 'ok' => false,
-                'error' => 'No se pudo crear el representante'
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -122,7 +148,7 @@ class RepresentanteService
     public function actualizarRepresentante(Request $request, $id)
     {
         try {
-            $id_usuario = auth()->user()->id ?? 1;
+            $updated_by = auth()->user()->id ?? 1;
 
             $representante = Representante::findOrFail($id);
 
@@ -133,10 +159,10 @@ class RepresentanteService
                     'identificacion' => [
                             'string',
                             'max:13',
-                            'unique:representante,identificacion,' . $id . ',id', // Usamos el ID del representante
                         ],
                     'telefono' => 'string|max:15',
-                    'correo' => 'email|max:255',
+                    //'email' => 'email|max:255',
+                    'emails.*' => 'email|max:255|distinct',
                     'id_localidad' => 'nullable|array',
                     'id_localidad.*' => 'exists:cliente_localidad,id'
                 ],[
@@ -154,16 +180,31 @@ class RepresentanteService
                 'apellido' => $request->input('apellido') ?? $representante->apellido,
                 'identificacion' => $request->input('identificacion') ?? $representante->identificacion,
                 'telefono' => $request->input('telefono') ?? $representante->telefono,
-                'correo' => $request->input('correo') ?? $representante->correo,
+                'correo' => $request->input('email') ?? $representante->correo,
                 'estado' => $request->input('estado') ?? $representante->estado,
                 'fecha_creacion' => $request->input('fecha_creacion') ?? $representante->fecha_creacion,
                 'ver_todas_localidades' => $request->input('ver_todas_localidades') ?? $representante->ver_todas_localidades,
                 'fecha_actualizacion' => now(),  // Asigna la fecha actual directamente
-                'id_usuario_auditor' => $id_usuario,  // Asigna el id del usuario auditor
+                'id_usuario_auditor' => $updated_by,  // Asigna el id del usuario auditor
             ]);
+
+            // Elimina los anteriores y agrega los nuevos:
+            $representante->emails()->delete();
+            $correos = $request->input('emails', []);
+
+            foreach ($correos as $idx => $mail) {
+                $representante->emails()->create([
+                    'email'     => $mail,
+                    'principal' => $idx === 0,
+                ]);
+            } 
 
             if ($request->has('id_localidad')) {
                 $representante->localidades()->sync($request->input('id_localidad', []));
+            }
+
+            if ($request->filled('estado')) {
+                $this->usuarioService->cambiar_estado_usuario($representante->id_usuario, $request->input('estado'));
             }
 
             return response()->json([
@@ -180,5 +221,13 @@ class RepresentanteService
             ], 500);
         }
     }
-    
+
+    public function obtenerCorreosPorCliente($id_cliente)
+    {
+        return Representante::where('id_cliente', $id_cliente)
+            ->where('estado', 1)
+            ->whereNotNull('correo')
+            ->pluck('correo')
+            ->toArray();
+    }
 }

@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Spatie\Permission\Traits\HasRoles;
+
 
 class CiUser extends Authenticatable
 {
+    use HasRoles;
     protected $table = 'ci_users';
 
     protected $fillable = [
@@ -16,6 +18,9 @@ class CiUser extends Authenticatable
         'password',
         'rol',
         'estado',
+        'nombre',
+        'apellido',
+        'email',
         'fecha_creacion',
         'fecha_fin',
     ];
@@ -27,8 +32,10 @@ class CiUser extends Authenticatable
     {
         return $this->belongsTo(Cliente::class, 'id_cliente');
     }
-    public function roles()
+
+    public function representante()
     {
-        return $this->belongsToMany(Rol::class);
+        return $this->hasOne(Representante::class, 'id_usuario');
     }
+
 }

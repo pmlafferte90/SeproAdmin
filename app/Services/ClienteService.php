@@ -23,15 +23,61 @@ class ClienteService
         }
     }
 
+    public function getClienteByLocalidad($id_localidad)
+    {
+        try {
+            $localidad = ClienteLocalidad::where("id", $id_localidad)
+                ->with('cliente')
+                ->first();
+
+            return $localidad ? $localidad->cliente : null;
+        } catch (\Exception $e) {
+            Log::error('Error al obtener cliente por localidad: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
     public function obtenerClientes($request)
     {
         try {
+            $user = Auth::user(); // Usuario logueado
             $buscar = $request->input('buscar');
             $perPage = $request->input('perPage', 5);
 
-            $query = Cliente::query()->where('estado', 1)->with('localidades');
+            // Consulta base
+            $query = Cliente::query()->where('estado', 1);
 
-            if ($request->filled('buscar')) {
+            // Validar si el usuario tiene el rol Admin
+            if ($user->hasRole('Admin')) {
+                $query->with('localidades'); // Cargar todas las localidades
+            } else {
+                // Validar que el usuario tenga id_cliente
+                if ($user->id_cliente) {
+                    $query->where('id', $user->id_cliente);
+                }
+
+                // Validar restricciones por representante
+                $representante = $user->representante;
+                if ($representante && !$representante->ver_todas_localidades) {
+                    $localidadIds = $representante->localidades->pluck('id')->toArray();
+
+                    // Filtrar solo por localidades asignadas
+                    $query->whereHas('localidades', function ($q) use ($localidadIds) {
+                        $q->whereIn('id', $localidadIds);
+                    });
+
+                    // Cargar solo las localidades permitidas
+                    $query->with(['localidades' => function ($q) use ($localidadIds) {
+                        $q->whereIn('id', $localidadIds);
+                    }]);
+                } else {
+                    // Si puede ver todas las localidades
+                    $query->with('localidades');
+                }
+            }
+
+            // Filtro de búsqueda
+            if ($buscar) {
                 $query->where(function ($q) use ($buscar) {
                     $q->where('razon_social', 'like', "%{$buscar}%")
                         ->orWhere('ruc', 'like', "%{$buscar}%")
@@ -39,12 +85,11 @@ class ClienteService
                 });
             }
 
-            $clientes = $query->paginate($perPage)->appends([
+            // Devolver resultados paginados
+            return $query->paginate($perPage)->appends([
                 'buscar' => $buscar,
                 'perPage' => $perPage,
             ]);
-
-            return $clientes;
         } catch (\Exception $e) {
             Log::error('Error al obtener clientes: ' . $e->getMessage());
             throw $e;
@@ -59,7 +104,8 @@ class ClienteService
             if($id_cliente != 0){
                 $clientes = $clientes->where('id',$id_cliente);
             }
-            $clientes = $clientes->get();
+            
+            $clientes = $clientes->orderBy('razon_social', 'asc')->get();
 
             return $clientes;
 

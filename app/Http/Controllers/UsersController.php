@@ -59,27 +59,26 @@ class UsersController extends Controller
             ->withSuccess(__('User created successfully.'));
     }
 
-    /**
-     * Show user data
-     *
-     * @param User $user
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function show(CiUser $user)
     {
         $userData = CiUser::select(
                 "ci_users.id",
                 "ci_users.usuario",
                 "cliente.razon_social AS empresa",
-                "ci_rol.rol",
-                "ci_users.fecha_creacion" // Asegúrate de seleccionar la fecha de creación
+                "ci_users.fecha_creacion"
             )
             ->leftJoin("cliente", "cliente.id", "=", "ci_users.id_cliente")
-            ->join("ci_rol", "ci_rol.id", "=", "ci_users.rol")
             ->where('ci_users.id', $user->id)
             ->firstOrFail();
-            $userData->fecha_creacion = $userData->fecha_creacion ? Carbon::parse($userData->fecha_creacion) : null;
+
+        // Obtener el nombre del primer rol usando Spatie
+        $userData->rol = $user->getRoleNames()->first();
+
+        // Parsear la fecha si existe
+        $userData->fecha_creacion = $userData->fecha_creacion
+            ? Carbon::parse($userData->fecha_creacion)
+            : null;
 
         return view('users.show', [
             'user' => $userData

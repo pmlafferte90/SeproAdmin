@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\CiUser;
 use Illuminate\Http\Request;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
@@ -43,4 +44,38 @@ class LoginController extends Controller
     {   
         return 'usuario';
     }
+
+    protected function authenticated(Request $request, $user)
+    {
+        if ($user->hasRole('Admin')) {
+            return redirect()->route('dashboard');
+        }
+
+        return redirect()->route('clientes.index');
+    }
+
+    protected function credentials(Request $request)
+    {
+        return [
+            'usuario' => $request->get('usuario'),
+            'password' => $request->get('password'),
+            'estado' => 1 // Solo permitirá usuarios activos
+        ];
+    }
+
+    protected function sendFailedLoginResponse(Request $request)
+    {
+        $user = CiUser::where('usuario', $request->usuario)->first();
+
+        if ($user && $user->estado == 0) {
+            return redirect()->back()
+                ->withInput($request->only('usuario'))
+                ->withErrors(['usuario' => 'Tu cuenta está inactiva.']);
+        }
+
+        return redirect()->back()
+            ->withInput($request->only('usuario'))
+            ->withErrors(['usuario' => trans('auth.failed')]);
+    }
+
 }

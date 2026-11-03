@@ -14,7 +14,7 @@
 @endsection
 
 @section('content')
-@include('modales.area_empresaform')
+{{-- @include('modales.area_empresaform') --}}
 
 <div class="mt-4 bg-white p-4 rounded shadow-sm">
     <div class="d-flex justify-content-between align-items-center mb-3">

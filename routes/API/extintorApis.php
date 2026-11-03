@@ -13,5 +13,12 @@ Route::post('/controlExtintor/crear', [ExtintorController::class, 'insertar_cont
 Route::get('/control-extintores/export', [ExtintorController::class, 'export'])->name('control_extintores.export');
 Route::post('control-extintores/{id}/actualizar', [ExtintorController::class, 'update_control_extintor'])->name('actualizar_control_extintores');
 Route::put('/control-extintores/cambiarEstado_control_extintores/{id}', [ExtintorController::class, 'cambiarEstado_control_extintores'])->name('cambiarEstado_control_extintores');
+Route::post('/control-extintores/enviar-reporte', [ExtintorController::class, 'sendReportEmail']);
+Route::get('/control_extintor_cliente/{cliente}/ubicaciones',[ExtintorController::class, 'ubicacionesPorRevisar'])->name('control_extintor.ubicaciones');
+Route::get('extintorApis/{cliente}/detalle', [ExtintorController::class, 'detalleExtintorExcel'])->name('extintor.detalleExtintorExcel');
+Route::get('/reporte-resumen-extintores', [ExtintorController::class, 'exportResumenExtintores'])->name('reporte_resumen_extintores');
+Route::get('/control-extintor/ultimo', [ExtintorController::class, 'getUltimoControl']);
+
+
 
 

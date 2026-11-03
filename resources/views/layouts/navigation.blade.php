@@ -1,12 +1,14 @@
 <ul class="sidebar-nav" data-coreui="navigation">
+    @hasanyrole('Admin')
     <li class="nav-item">
         <a class="nav-link" href="{{ route('dashboard') }}">
             <svg class="nav-icon">
                 <use xlink:href="{{ asset('icons/coreui.svg#cil-speedometer') }}"></use>
             </svg>
-            {{ __('Dashboard') }}
+            Dashboard
         </a>
     </li>
+    @endhasanyrole
 
     @foreach($menus as $menu => $data)
         <li class="nav-group {{ in_array(request()->path(), array_column($data['submenu'], 'ruta')) ? 'nav-group-expanded' : '' }}">

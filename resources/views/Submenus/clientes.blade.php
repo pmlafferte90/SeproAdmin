@@ -8,7 +8,9 @@
 <div class="mt-4 bg-white p-4 rounded shadow-sm">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="h5 font-weight-bold">Clientes</h2>
+        @hasanyrole('Admin|Revisor')
         <button class="btn btn-danger text-white" onclick="nuevoCliente()">+ NUEVO CLIENTE</button>
+        @endhasanyrole
     </div>
 
     @include('componentes.buscador', ['actionRoute' => route('clientes.index')])
@@ -37,8 +39,37 @@
             <tbody>
                 @forelse ($clientes as $cliente)
                 <tr>
-                    <td>
+                    {{-- <td>
                         <button class="btn btn-sm toggle-localidades" data-id="{{ $cliente->id }}" title="Localidades">+</button>
+                    </td> --}}
+                    <td style="vertical-align: middle;">
+                    <button 
+                        class="btn btn-outline-primary toggle-localidades"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#localidades-{{ $cliente->id }}"
+                        aria-expanded="false"
+                        aria-controls="localidades-{{ $cliente->id }}"
+                        title="Mostrar/ocultar localidades"
+                        data-id="{{ $cliente->id }}"
+                        style="
+                            --btn-size: 1.75rem;
+                            width: var(--btn-size);
+                            height: var(--btn-size);
+                            padding: 0;
+                            font-size: 0.75rem;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            background-color: var(--sepro);
+                            border-color: var(--sepro);
+                            color: #fff;
+                        "
+                        onmouseenter="this.style.backgroundColor='transparent'; this.style.color='var(--sepro)'; this.style.borderColor='var(--sepro)';"
+                        onmouseleave="this.style.backgroundColor='var(--sepro)'; this.style.color='#fff'; this.style.borderColor='var(--sepro)';"
+                        >
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                     </td>
                     <td>{{ $cliente->razon_social }}</td>
                     <td>{{ $cliente->ruc }}</td>
@@ -49,11 +80,6 @@
                             ? \Carbon\Carbon::parse($cliente->fecha_creacion)->format('d-m-Y') 
                             : '-' }}
                     </td>
-                    <!-- <td style="white-space: nowrap;">
-                        {{ $cliente->fecha_fin && $cliente->fecha_fin !== '0000-00-00' 
-                            ? \Carbon\Carbon::parse($cliente->fecha_fin)->format('d-m-Y') 
-                            : '-' }}
-                    </td> -->
                     <td>
                         <span class="badge {{ $cliente->estado == 1 ? 'bg-success' : 'bg-danger' }}">
                             {{ $cliente->estado == 1 ? 'Activo' : 'Inactivo' }}
@@ -61,27 +87,23 @@
                     </td>
                     <td>
                         <div class="d-flex gap-2">
+                            @hasanyrole('Admin|Revisor')
                             <button class="btn btn-editar btn-sm {{ $cliente->estado == 0 ? 'disabled' : '' }}"
                                 title="Editar"
                                 onclick="editarCliente('{{ $cliente->id }}')">
                                 <i class="fas fa-pen"></i>
                             </button>
-
                             <a href="{{ url('area_empresa/' . $cliente->id) }}"
                                 class="btn btn-area-empresa btn-sm {{ $cliente->estado == 0 ? 'disabled' : '' }}"
                                 title="Áreas Empresa">
                                 <i class="fas fa-plus"></i>
                             </a>
-                            <!-- <a href="{{ url('control_extintor_cliente/' . $cliente->id) }}"
-                                class="btn btn-control-extintores btn-sm {{ $cliente->estado == 0 ? 'disabled' : '' }}"
-                                title="Control Extintores">
-                                <i class="fas fa-list"></i>
-                            </a> -->
                             <button class="btn btn-sm {{ $cliente->estado == 1 ? 'btn-eliminar' : 'btn-success' }}"
                                 title="{{ $cliente->estado == 1 ? 'Eliminar' : 'Restaurar' }}"
                                 onclick="cambiarEstadoCliente('{{ $cliente->id }}', '{{ $cliente->estado }}')">
                                 <i class="fas {{ $cliente->estado == 1 ? 'fa-trash' : 'fa-undo' }}"></i>
                             </button>
+                            @endhasanyrole
                         </div>
                     </td>
                 </tr>
@@ -93,12 +115,14 @@
                             <thead>
                                 <tr>
                                     <th>
+                                        @hasanyrole('Admin|Revisor')
                                         <button class="btn btn-sm agregar-localidad border"
                                             title="Nueva localidad"
                                             data-id-cliente="{{ $cliente->id }}"
                                             onclick="nuevaLocalidad('{{ $cliente->id }}')">
                                             +
                                         </button>
+                                        @endhasanyrole
                                     </th>
                                     <th>Nombre</th>
                                     <th>Dirección</th>
@@ -127,28 +151,41 @@
                                     </td>
                                     <td>
                                         <div class="d-flex gap-2">
-
+                                            @hasanyrole('Admin|Revisor')
                                             <button class="btn btn-editar btn-sm {{ $localidad->estado == 0 ? 'disabled' : '' }} editar-localidad"
                                                 title="Editar"
                                                 data-id-localidad="{{ $localidad->id }}"
                                                 onclick="editarLocalidad('{{ $localidad->id }}')">
                                                 <i class="fas fa-pen"></i>
                                             </button>
+                                            @endhasanyrole
                                             <button
                                                 type="button"
-                                                onclick="irControlExtintorCliente({{ $cliente->id }}, {{ $localidad->id }})"
-                                                class="btn btn-control-extintores btn-sm"
+                                                onclick="irControlExtintorCliente('{{ $cliente->id }}','{{ $localidad->id }}')"
+                                                class="btn btn-control-extintores"
                                                 title="Control Extintores"
                                                 {{ $cliente->estado == 0 ? 'disabled' : '' }}
+                                                style="
+                                                    padding: 0.25rem 0.4rem;
+                                                    display: inline-flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                "
                                                 >
-                                                <i class="fas fa-list"></i>
+                                                <img 
+                                                    src="{{ asset('img/control-extintor.png') }}" 
+                                                    alt="Control Extintores" 
+                                                    style="width:1.25rem; height:1.25rem; object-fit:contain;"
+                                                />
                                             </button>
+                                            @hasanyrole('Admin|Revisor')
                                             <button class="btn btn-sm {{ $localidad->estado == 1 ? 'btn-eliminar' : 'btn-success' }} eliminar-localidad"
                                                 title="{{ $localidad->estado == 1 ? 'Eliminar' : 'Restaurar' }}"
                                                 data-id-localidad="{{ $localidad->id }}"
                                                 onclick="eliminarLocalidad('{{ $localidad->id }}', '{{ $localidad->estado }}')">
                                                 <i class="fas {{ $localidad->estado == 1 ? 'fa-trash' : 'fa-undo' }}"></i>
                                             </button>
+                                            @endhasanyrole
                                         </div>
                                     </td>
                                 </tr>
@@ -175,22 +212,35 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll(".toggle-localidades").forEach(button => {
-            button.addEventListener("click", function() {
-                let id = this.getAttribute("data-id");
-                let row = document.getElementById(`localidades-${id}`);
+document.addEventListener("DOMContentLoaded", function() {
+  document.querySelectorAll(".toggle-localidades").forEach(button => {
+    let busy = false;
 
-                if (row.classList.contains("d-none")) {
-                    row.classList.remove("d-none");
-                    this.textContent = "-";
-                } else {
-                    row.classList.add("d-none");
-                    this.textContent = "+";
-                }
-            });
-        });
+    button.addEventListener("click", () => {
+      if (busy) return;           // si ya está en proceso, ignoramos
+      busy = true;
+      button.disabled = true;     // inhabilita el botón
+
+      const id   = button.getAttribute("data-id");
+      const row  = document.getElementById(`localidades-${id}`);
+      const icon = button.querySelector("i");
+
+      if (row.classList.contains("d-none")) {
+        row.classList.remove("d-none");
+        icon.classList.replace("fa-chevron-right", "fa-chevron-down");
+      } else {
+        row.classList.add("d-none");
+        icon.classList.replace("fa-chevron-down", "fa-chevron-right");
+      }
+
+      // Una vez hecho el toggle, deslockeamos tras un pequeño retardo
+      setTimeout(() => {
+        busy = false;
+        button.disabled = false;
+      }, 300); // 300 ms es suficiente para evitar dobles clicks rápidos
     });
+  });
+});
 </script>
 
 @endsection

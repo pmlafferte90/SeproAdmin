@@ -27,7 +27,7 @@ window.showToast = function(message, type = 'success', onFinish = null) {
             toast.remove();
             if (typeof onFinish === 'function') onFinish();
         }, 300);
-    }, 2500);
+    }, 1500);
 };
 
 window.showLoading = function() {
@@ -40,20 +40,30 @@ window.hideLoading = function() {
     if (el) el.style.display = 'none';
 };
 
-window.showConfirm = function (message, onAccept) {
+window.showConfirm = function (message, onAccept, onCancel = null) {
     const modal = new bootstrap.Modal(document.getElementById('global-confirm-modal'));
     const messageElement = document.getElementById('global-confirm-message');
     const acceptButton = document.getElementById('global-confirm-accept');
+    const cancelButton = document.getElementById('global-confirm-cancel');
 
     messageElement.textContent = message;
 
-    const handler = () => {
-        acceptButton.removeEventListener('click', handler);
+    acceptButton.replaceWith(acceptButton.cloneNode(true));
+    cancelButton.replaceWith(cancelButton.cloneNode(true));
+
+    const newAcceptButton = document.getElementById('global-confirm-accept');
+    const newCancelButton = document.getElementById('global-confirm-cancel');
+
+    newAcceptButton.addEventListener('click', () => {
         modal.hide();
         if (typeof onAccept === 'function') onAccept();
-    };
+    });
 
-    acceptButton.addEventListener('click', handler);
+    newCancelButton.addEventListener('click', () => {
+        modal.hide();
+        if (typeof onCancel === 'function') onCancel();
+    });
+
     modal.show();
 };
 

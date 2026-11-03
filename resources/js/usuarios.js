@@ -1,5 +1,50 @@
 console.log("entro a usuario js");
 
+document.addEventListener('DOMContentLoaded', () => {
+    initGenerateUsername();
+});
+
+window.togglePasswordField = function () {
+  const checked = document.getElementById('resetPasswordCheckbox').checked;
+  const passwordInput = document.getElementById('password');
+
+  passwordInput.required = checked;
+  passwordInput.disabled = !checked;
+  if (!checked) passwordInput.value = '';
+};
+
+function initGenerateUsername() {
+
+    const nombreInput = document.getElementById('nombre');
+    const apellidoInput = document.getElementById('apellido');
+
+    function shouldGenerateUsername() {
+        const usuarioIdInput = document.getElementById('usuarioId');
+        return !(usuarioIdInput && usuarioIdInput.value); // Solo genera si no está seteado
+    }
+
+    nombreInput.addEventListener('blur', () => {
+        if (!shouldGenerateUsername()) return;
+        const nombre = nombreInput.value.trim();
+        const apellido = apellidoInput.value.trim();
+        const usuarioInput = document.getElementById('usuario');
+
+        if (nombre && apellido && usuarioInput) {
+            window.generarUsername(nombre, apellido, usuarioInput);
+        }
+    });
+
+    apellidoInput.addEventListener('blur', () => {
+        if (!shouldGenerateUsername()) return;
+        const nombre = nombreInput.value.trim();
+        const apellido = apellidoInput.value.trim();
+        const usuarioInput = document.getElementById('usuario');
+
+        if (nombre && apellido && usuarioInput) {
+            window.generarUsername(nombre, apellido, usuarioInput);
+        }
+    });
+}
 function enviarFormulariousuario() {
     showLoading();
 
@@ -67,16 +112,21 @@ window.crearusuario = function() {
         showLoading();
 
         const form = document.getElementById('usuarioForm');
-        form.action = '/usuarios/crear';
+        form.reset(); // Limpia todos los inputs del formulario
+
         document.getElementById('usuarioId').value = '';
-        document.getElementById('usuario').value = '';
         document.getElementById('usuario').disabled = false;
-        document.getElementById('password').value = '';
-        document.getElementById('rol_id').value = '';
+        document.getElementById('password').required = true;
+        document.getElementById('password').disabled = false;
+
+        // Oculta checkbox de reset
+        document.getElementById('resetPasswordWrapper').style.display = 'none';
+        document.getElementById('resetPasswordCheckbox').checked = false;
 
         document.getElementById('usuarioModalLabel').textContent = 'Nuevo usuario';
         document.getElementById('submitButton').textContent = 'Crear usuario';
 
+        // Mostrar el modal
         modalHelper.open('usuarioModal');
     } catch (error) {
         console.error("Error en crearusuario:", error);
@@ -90,23 +140,22 @@ window.editarusuario = function(usuario) {
     try {
         showLoading();
 
-        const form = document.getElementById('usuarioForm');
-        form.action = `usuario/actualizar/${usuario.id}`;
-        form.method = 'POST';
-
-        if (!form.querySelector('input[name="_method"]')) {
-            const inputMethod = document.createElement('input');
-            inputMethod.type = 'hidden';
-            inputMethod.name = '_method';
-            inputMethod.value = 'POST';
-            form.appendChild(inputMethod);
-        }
-
         document.getElementById('usuarioId').value = usuario.id;
         document.getElementById('usuario').value = usuario.usuario;
         document.getElementById('usuario').disabled = true;
-        document.getElementById('password').value = usuario.password;
+        document.getElementById('nombre').value = usuario.nombre;
+        document.getElementById('apellido').value = usuario.apellido;
+        document.getElementById('email').value = usuario.email;
         document.getElementById('rol_id').value = usuario.id_rol;
+
+        // Mostrar checkbox para reset
+        document.getElementById('resetPasswordWrapper').style.display = 'block';
+        document.getElementById('resetPasswordCheckbox').checked = false;
+        togglePasswordField();
+    
+        // La contraseña no es requerida hasta que el check esté activo
+        document.getElementById('password').required = false;
+        document.getElementById('password').disabled = true;
 
         document.getElementById('usuarioModalLabel').textContent = 'Editar usuario';
         document.getElementById('submitButton').textContent = 'Actualizar usuario';

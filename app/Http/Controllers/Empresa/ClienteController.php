@@ -258,4 +258,23 @@ class ClienteController extends Controller
         }
     }
 
+    public function apiClientesActivos()
+    {
+        try {
+            $clientes = $this->clienteService->obtenerClientesActivos();
+
+            $resultado = collect($clientes)->map(function ($cliente) {
+                return [
+                    'id' => $cliente->id,
+                    'razon_social' => $cliente->razon_social,
+                ];
+            });
+
+            return response()->json(['data' => $resultado]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+
 }

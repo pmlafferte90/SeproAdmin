@@ -217,11 +217,11 @@ class AreaController extends Controller
             $areaEmpresas = $this->areaService->get_areas_empresa($request, $id_cliente);
             //datos para la modal
             // Obtener Áreas y Subáreas activas
-            $areas = $this->areaService->obtenerAreasSubareasActivas();
+            //$areas = $this->areaService->obtenerAreasSubareasActivas();
             // Obtener Clientes Activos
-            $clientes = $this->clienteService->obtenerClientesActivos($id_cliente);
+            //$clientes = $this->clienteService->obtenerClientesActivos($id_cliente);
 
-            return view('Submenus.area_empresa', compact('areaEmpresas','areas','id_cliente','clientes'));
+            return view('Submenus.area_empresa', compact('areaEmpresas'/*,'areas'*/,'id_cliente'/*,'clientes'*/));
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
@@ -410,6 +410,31 @@ class AreaController extends Controller
                 'ok'    => false,
                 'error' => 'Error interno del servidor'
             ], 500);
+        }
+    }
+
+    public function subareas_activas_api()
+    {
+        try {
+            $areas = $this->areaService->obtenerAreasSubareasActivas();
+
+            // Convertir a formato deseado para JS
+            $resultado = [];
+
+            foreach ($areas as $area) {
+                foreach ($area->subareas as $sub) {
+                    $resultado[] = [
+                        'id' => $sub->id,
+                        'text' => $sub->nombre,
+                        'area' => $area->nombre,
+                        'codigo' => $sub->codigo ?? null
+                    ];
+                }
+            }
+
+            return response()->json(['data' => $resultado]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
     }
     

@@ -15,166 +15,159 @@
 
 @section('content')
 @include('modales.control_extintorform')
+@include('modales.control-extintor.enviar-correo')
+
 
 <div class="mt-4 bg-white p-4 rounded shadow-sm">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h5 font-weight-bold">Control de Extintores</h2>
-        <button class="btn btn-danger text-white" onclick="precargarControlExtintor()">+ NUEVO CONTROL</button>
-    </div>
-
-    <div class="mb-3">
-        <div class="row g-2 align-items-end">
-            <!-- Botón de Excel -->
-            <div class="col-md-auto">
-                <a href="{{ route('control_extintores.export', ['id_cliente' => $id_cliente, 'mes' => request('mes'), 'anio' => request('anio')]) }}" class="btn btn-success">
-                    <i class="fa fa-file-excel"></i> Descargar Excel
-                </a>
-            </div>
-
-            <!-- Filtros -->
-            <div class="col-md-auto">
-                <form method="GET" action="{{ $id_cliente != 0 ? route('obtener_control_extintor_por_cliente', ['id_cliente' => $id_cliente]) : route('obtener_control_extintores') }}" class="d-flex align-items-center gap-2">
-                    <select name="mes" class="form-select w-auto" onchange="this.form.submit()">
-                        <option value="">Todos los meses</option>
-                        @foreach(range(1, 12) as $m)
-                            <option value="{{ $m }}" {{ request('mes') == $m ? 'selected' : '' }}>
-                                {{ \Carbon\Carbon::create()->month($m)->translatedFormat('F') }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <select name="anio" class="form-select w-auto" onchange="this.form.submit()">
-                        @foreach(range(2023, date('Y')) as $y)
-                            <option value="{{ $y }}" {{ request('anio', date('Y')) == $y ? 'selected' : '' }}>
-                                {{ $y }}
-                            </option>
-                        @endforeach
-                    </select>
-                </form>
-            </div>
-        </div>
-    </div>
     <div class="table-responsive" style="overflow-x: auto; width: 100%;">
-        <table class="table table-bordered table-striped" style="min-width: 1800px;">
-            <thead>
-                <tr>
-                    <th class="text-center" style="min-width: 250px;">CLIENTE</th>
-                    <th>LOCALIDAD</th>
-                    <th>FECHA REVISION</th>
-                    <th>ÁREA</th>
-                    <th>UBICACIÓN</th>
-                    <th>COD</th>
-                    <th>CLASE</th>
-                    <th>MARCA</th>
-                    <th>PESO</th>
-                    <th>MANGUERA</th>
-                    <th>MANOMETRO</th>
-                    <th>SEGURO</th>
-                    <th>CILINDRO</th>
-                    <th>FECHA RECARGA</th>
-                    <th class="text-center" style="min-width: 200px;">FECHA PROX. RECARGA</th>
-                    <th>FECHA FABRICACION</th>
-                    <th class="text-center" style="min-width: 200px;">FECHA PRUEBA HIDROSTATICA</th>
-                    <th>ÁREA DE SEGURIDAD</th>
-                    <th>INSTRUCTIVO</th>
-                    <th>INSTRUCTIVO CLASIFICACION</th>
-                    <th>FLECHA UBICACIÓN</th>
-                    <th>SILUETA</th>
-                    <th>RECT. INSTALACIÓN</th>
-                    <th class="text-center" style="min-width: 250px;">EXTINTOR DENTRO DE HIDRANTE Y/O ARMARIO</th>
-                    <th>DIMENSIÓN VIDRIO/ACRILICO</th>
-                    <th>OBSERVACIONES MARBETE</th>
-                    <th>OBSERVACIONES</th>
-                    <th>OBSERVACIONES INTERNAS</th>
-                    <th class="sticky-col bg-white border-start" style="z-index: 5; box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.2);">
-                        ACCIONES
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($controlExtintores as $index => $controlExtintor)
-                <tr>
-                    <td>{{ $controlExtintor->razon_social }}</td>
-                    <td>{{ $controlExtintor->localidad }}</td>
-                    @include('componentes.fecha-columna', ['fecha' => $controlExtintor->fecha_revision])
-                    <td>{{ $controlExtintor->area_nombre }}</td>
-                    <td>{{ $controlExtintor->ubicacion }}</td>
-                    <td>{{ $controlExtintor->codigo }}</td>
-                    <td>{{ $controlExtintor->clase }}</td>
-                    <td>{{ $controlExtintor->marca }}</td>
-                    <td>{{ $controlExtintor->peso }} {{ $controlExtintor->unidad }}</td>
-                    <td>{{ $controlExtintor->mango }}</td>
-                    <td>{{ $controlExtintor->mano }}</td>
-                    <td>{{ $controlExtintor->seguro }}</td>
-                    <td>{{ $controlExtintor->cilindro }}</td>
-                    @include('componentes.fecha-columna', ['fecha' => $controlExtintor->fecha_recarga])
-                    @include('componentes.fecha-columna', ['fecha' => $controlExtintor->fecha_prox_recarga])
-                    @include('componentes.fecha-columna', ['fecha' => $controlExtintor->fecha_fabricacion])
-                    @include('componentes.fecha-columna', ['fecha' => $controlExtintor->fecha_prueba_hidrostatica])
-                    <td>{{ $controlExtintor->area_seguridad }}</td>
-                    <td>{{ $controlExtintor->instructivo_uso }}</td>
-                    <td>{{ $controlExtintor->instructivo_clasificacion }}</td>
-                    <td>{{ $controlExtintor->flecha_ubicacion }}</td>
-                    <td>{{ $controlExtintor->silueta }}</td>
-                    <td>{{ $controlExtintor->rectangulo_instalacion }}</td>
-                    <td>{{ $controlExtintor->hidrante }}</td>
-                    <td>{{ $controlExtintor->dimension_vidrio }}</td>
-                    <td>{{ $controlExtintor->novedad_marbete }}</td>
-                    <td>
-                        {{ $controlExtintor->observacionesNomenclatura->pluck('abreviatura')->implode(', ') }}
-                    </td>
-                    <td>{{ $controlExtintor->observaciones }}</td>
-                    <!-- <td>
-                        <div class="d-flex gap-2">
-                            @if($controlExtintor->imagen_observacion)
-                                <a href="{{ asset('storage/' . $controlExtintor->imagen_observacion) }}" download class="btn btn-download btn-sm" title="Descargar Imagen">
-                                    <i class="fa fa-download"></i>
-                                </a>
-                            @endif
-                        </div>
-                    </td> -->
-                    <td class="sticky-col bg-white border-start" style="z-index: 4; box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.1);">
-                        <div class="d-flex gap-2">
-                            @if($controlExtintor->imagen_observacion)
-                                <button class="btn btn-sm btn-success"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#imageModal"
-                                    data-image="{{ $controlExtintor->imagen_observacion ? Storage::disk('s3')->url($controlExtintor->imagen_observacion) : '' }}"
-                                    data-marca="{{ $controlExtintor->marca }}"
-                                    data-fecha="{{ $controlExtintor->fecha_ingreso }}"
-                                    title="Visualizar Imagen">
-                                    <i class="fa fa-eye"></i>
-                                </button>
-                            @endif
+        @section('tabla-extra-content')
+            <div class="d-flex align-items-center gap-2">
+                <select id="mesSelect" class="form-select" style="width: 120px; font-size: 13px;" onchange="updateQueryParam('mes', this.value)">
+                    <option value="">Todos los meses</option>
+                    @foreach(range(1, 12) as $m)
+                        <option value="{{ $m }}" {{ request('mes') == $m ? 'selected' : '' }}>
+                            {{ \Carbon\Carbon::create()->month($m)->translatedFormat('F') }}
+                        </option>
+                    @endforeach
+                </select>
 
-                            <button class="btn btn-sm btn-editar"
-                                title="Editar"
-                                onclick='editarControlExtintorCliente(@json($controlExtintor), {{ $id_cliente }})'>
-                                <i class="fas fa-pen"></i>
-                            </button>
+                <select id="anioSelect" class="form-select" style="width: 120px; font-size: 13px;" onchange="updateQueryParam('anio', this.value)">
+                    @foreach(range(2023, date('Y')) as $y)
+                        <option value="{{ $y }}" {{ request('anio', date('Y')) == $y ? 'selected' : '' }}>
+                            {{ $y }}
+                        </option>
+                    @endforeach
+                </select>
+                @hasanyrole('Admin|Revisor')
+                <button class="btn btn-success" style="font-size: 13px;" onclick="exportarExcel({{ $id_cliente }})">
+                    <i class="fa fa-file-excel"></i> Exportar Excel
+                </button>
+                 @if(request('mes') && request('anio'))
+                <button type="button" class="btn btn-warning" style="font-size: 13px;" onclick="modalHelper.open('modalEnviarCorreo')">
+                    <i class="fa fa-envelope"></i> Enviar Reporte por Correo
+                </button>
+                <button
+                    class="btn btn-success"
+                    style="font-size: 13px;"
+                    onclick="ubicacionesxRevisar({{ $id_cliente }}, {{ request('mes') }}, {{ request('anio') }})"
+                >
+                    <i class="fas fa-map-marker-alt"></i>
+                    Ubicaciones por revisar
+                </button>
+                @endif
+                @endhasanyrole
+            </div>
+        @endsection
 
-                            <button class="btn btn-sm {{ $controlExtintor->estado == 1 ? 'btn-eliminar' : 'btn-success' }}"
-                                title="{{ $controlExtintor->estado == 1 ? 'Eliminar' : 'Restaurar' }}"
-                                onclick="cambiarEstadoControl({{ $controlExtintor->id }}, {{ $controlExtintor->estado }})">
-                                <i class="fas {{ $controlExtintor->estado == 1 ? 'fa-trash' : 'fa-undo' }}"></i>
-                            </button>
-                        </div>
-                    </td>
+        @section('tabla-create-button')
+            @hasanyrole('Admin|Revisor')
+            <button class="btn btn-danger text-white" style="font-size: 13px;" onclick="precargarControlExtintor()">+ NUEVO CONTROL</button>
+            @endhasanyrole
+        @endsection
 
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="28" class="text-center">No hay datos disponibles.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+        @section('table-footer')
+            <strong>Total de extintores registrados para esta localidad:</strong>
+            {{ $totalExtintoresxLocalidad }}
+        @endsection
 
-    <div class="d-flex justify-content-center mt-3">
-    </div>
+        <x-table
+          :headers="[
+            ['key' => 'fecha_revision',              'label' => 'FECHA REVISIÓN',                    'style' => 'min-width: 150px;'],
+            ['key' => 'codigo',                      'label' => 'COD',                               'style' => 'min-width: 100px;'],
+            ['key' => 'area_nombre',                 'label' => 'ÁREA',                              'style' => 'min-width: 100px;'],
+            ['key' => 'ubicacion',                   'label' => 'UBICACIÓN',                         'style' => 'min-width: 200px;'],
+            ['key' => 'clase',                       'label' => 'CLASE',                             'style' => 'min-width: 100px;'],
+            ['key' => 'marca',                       'label' => 'MARCA',                             'style' => 'min-width: 100px;'],
+            ['key' => 'peso',                        'label' => 'PESO',                              'style' => 'min-width: 100px;'],
+            ['key' => 'manguera',                    'label' => 'MANGUERA', 'noShow' => true],
+            ['key' => 'manometro',                   'label' => 'MANÓMETRO', 'noShow' => true],
+            ['key' => 'seguro',                      'label' => 'SEGURO', 'noShow' => true],
+            ['key' => 'cilindro',                    'label' => 'CILINDRO', 'noShow' => true],
+            ['key' => 'fecha_recarga',               'label' => 'FECHA RECARGA',                     'style' => 'min-width: 150px;'],
+            ['key' => 'fecha_prox_recarga',          'label' => 'FECHA PROX. RECARGA',               'style' => 'min-width: 150px;'],
+            ['key' => 'area_seguridad',              'label' => 'ÁREA DE SEGURIDAD',                 'style' => 'min-width: 100px;'],
+            ['key' => 'instructivo_uso',             'label' => 'INSTRUCTIVO DE USO',                'style' => 'min-width: 100px;'],
+            ['key' => 'instructivo_clasif',          'label' => 'INSTRUCTIVO DE CLASIFICACIÓN',      'style' => 'min-width: 100px;'],
+            ['key' => 'flecha_ubicacion',            'label' => 'FLECHA UBICACIÓN',                  'style' => 'min-width: 100px;'],
+            ['key' => 'silueta',                     'label' => 'SILUETA DE EXTINTOR',               'style' => 'min-width: 100px;'],
+            ['key' => 'rect_instalacion',            'label' => 'RECT. INSTALACIÓN'],
+            ['key' => 'hidrante',                    'label' => 'EXTINTOR DENTRO DE HIDRANTE Y/O ARMARIO','style'=>'min-width:200px;'],
+            ['key' => 'dimension_vidrio',            'label' => 'DIMENSIÓN VIDRIO/ACRILICO'],
+            ['key' => 'fecha_fabricacion',           'label' => 'FECHA FABRICACIÓN',                 'style' => 'min-width: 150px;'],
+            ['key' => 'fecha_prueba_hidros',         'label' => 'FECHA PRUEBA HIDROSTÁTICA',         'style' => 'min-width: 150px;'],
+            ['key' => 'novedad_marbete',             'label' => 'MARBETE',                           'style' => 'min-width: 150px;'],
+            ['key' => 'observaciones_nomen',         'label' => 'OBSERVACIONES', 'style' => 'min-width: 150px;'],
+            ['key' => 'observaciones',               'label' => 'OBSERVACIONES INTERNAS'],
+            ['key' => 'acciones',                    'label' => 'ACCIONES',   'class' => 'sticky-col bg-white border-start','style'=>'z-index:5;box-shadow:-4px 0 6px -2px rgba(0,0,0,0.2);', 'noShow' => true]
+          ]"
+         :rows="$controlExtintores->map(function($controlExtintor) use ($id_cliente){
+                return [
+                    $controlExtintor->fecha_revision,
+                    $controlExtintor->codigo,
+                    $controlExtintor->area_nombre,
+                    $controlExtintor->ubicacion,
+                    $controlExtintor->clase,
+                    $controlExtintor->marca,
+                    rtrim(rtrim($controlExtintor->peso, '0'), '.') . ' ' . $controlExtintor->unidad,
+                    $controlExtintor->mango,
+                    $controlExtintor->mano,
+                    $controlExtintor->seguro,
+                    $controlExtintor->cilindro,
+                    ucfirst(\Carbon\Carbon::parse($controlExtintor->fecha_recarga)->translatedFormat('F Y')),
+                    ucfirst(\Carbon\Carbon::parse($controlExtintor->fecha_prox_recarga)->translatedFormat('F Y')),
+                    $controlExtintor->area_seguridad,
+                    $controlExtintor->instructivo_uso,
+                    $controlExtintor->instructivo_clasificacion,
+                    $controlExtintor->flecha_ubicacion,
+                    $controlExtintor->silueta,
+                    $controlExtintor->rectangulo_instalacion,
+                    $controlExtintor->hidrante,
+                    $controlExtintor->dimension_vidrio,
+                    $controlExtintor->fecha_fabricacion,
+                    $controlExtintor->fecha_prueba_hidrostatica,
+                    $controlExtintor->novedad_marbete,
+                    $controlExtintor->observacionesNomenclatura->pluck('abreviatura')->implode(', ') ?: '-',
+                    $controlExtintor->observaciones,
+                    view('components.actions', [
+                        'actions' => array_filter([
+                            [
+                                'class' => 'btn-success',
+                                'title' => 'Visualizar Imagen',
+                                'icon' => 'fa fa-fire-extinguisher',
+                                'onclick' => $controlExtintor->imagen_observacion
+                                    ? 'viewImage(\'' . \Illuminate\Support\Facades\Storage::disk('s3')->url($controlExtintor->imagen_observacion) . '\', \''. $controlExtintor->marca . '\', \''. $controlExtintor->fecha_revision . '\')'
+                                    : ''
+                            ],
+                            auth()->user()->hasAnyRole(['Admin', 'Revisor']) ? [
+                                'class' => 'btn-editar',
+                                'title' => 'Editar',
+                                'icon' => 'fas fa-pen',
+                                'onclick' => 'editarControlExtintorCliente(' . json_encode($controlExtintor) . ', ' . $id_cliente . ')'
+                            ] : null,
+                            auth()->user()->hasAnyRole(['Admin', 'Revisor']) ? [
+                                'class' => $controlExtintor->estado == 1 ? 'btn-eliminar' : 'btn-success',
+                                'title' => $controlExtintor->estado == 1 ? 'Eliminar' : 'Restaurar',
+                                'icon' => $controlExtintor->estado == 1 ? 'fas fa-trash' : 'fas fa-undo',
+                                'onclick' => 'cambiarEstadoControl(' . $controlExtintor->id . ', ' . $controlExtintor->estado . ')'
+                            ] : null,
+                        ])
+                    ])->render()
+                ];
+            })->toArray()"
+            :paginator="$controlExtintores"
+            :titulo="$nombreCliente"
+            :subtitulo="$nombreLocalidad"
+            ></x-table>
+       </div>
 </div>
 <!-- Modal para mostrar la imagen -->
-<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" >
+<div class="modal fade"
+    id="imageModal"
+    tabindex="-1"
+    aria-labelledby="imageModalLabel"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+  >
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header d-flex justify-content-between">
@@ -198,6 +191,103 @@
             </div>
         </div>
     </div>
+</div>
+
+
+@push('after-scripts')
+<style>
+    :root { --sepro: #19346A; }
+
+    /* Modal más serio */
+    #ubicacionesModal .modal-content {
+        border-radius: .5rem;
+        box-shadow: 0 .75rem 1.5rem rgba(0,0,0,.1);
+    }
+    #ubicacionesModal .modal-header {
+        background: var(--sepro);
+        color: #fff;
+        border-bottom: 1px solid rgba(255,255,255,.2);
+    }
+    #ubicacionesModal .modal-header .modal-title {
+        font-weight: 600;
+        letter-spacing: .5px;
+    }
+    #ubicacionesModal .modal-footer {
+        border-top: none;
+        padding: 1rem 1.5rem;
+    }
+    #ubicacionesModal .tabla-scroll {
+        max-height: 55vh;
+        overflow-y: auto;
+    }
+
+    #ubicacionesModal table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+    }
+
+    #ubicacionesModal thead th,
+    #ubicacionesModal tbody td {
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #ubicacionesModal thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+     /* Botón aceptar sepro */
+    #ubicacionesModal .btn-aceptar {
+        background: var(--sepro);
+        border-color: var(--sepro);
+        color: #fff;
+        font-weight: 500;
+        padding: .5rem 1.25rem;
+    }
+</style>
+@endpush
+
+
+{{-- Modal para mostrar ubicaciones por revisar --}}
+<div class="modal fade"
+    id="ubicacionesModal"
+    tabindex="-1"
+    aria-hidden="true"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+    >
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Ubicaciones por Revisar</h5>
+        {{-- se elimina la “X” --}}
+      </div>
+
+      <div class="modal-body" id="ubicacionesModalBody">
+        {{-- contenido inyectado por JS --}}
+      </div>
+
+      <div class="modal-footer">
+        <button 
+          type="button" 
+          class="btn btn-aceptar" 
+          data-bs-dismiss="modal"
+        >
+          Aceptar
+        </button>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <script>

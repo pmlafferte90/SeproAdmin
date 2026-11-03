@@ -29,52 +29,54 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Paginator::useBootstrap();
-        // Usar un View Composer para todas las vistas que necesiten los menús
-        View::composer('*', function ($view) {
-            $user = auth()->user(); // Obtener el usuario autenticado
 
-            // Si no hay usuario autenticado, devolver un array vacío
-            if (!$user) {
-                $view->with('menus', []);
-                return;
+        View::composer('layouts.app', function ($view) {
+            $user = auth()->user();
+            if (! $user) {
+                return $view->with('menus', []);
             }
 
-            // Obtener el rol del usuario desde la tabla ci_users
-            $usuario = CiUser::select('rol')->where('id', $user->id)->first();
+            // Obtenemos directamente el rol
+            $id_rol = CiUser::where('id', $user->id)
+                            ->value('rol');
 
-            // Si no tiene un rol asignado, devolver un array vacío
-            if (!$usuario || !$usuario->rol) {
-                $view->with('menus', []);
-                return;
+            if (! $id_rol) {
+                return $view->with('menus', []);
             }
 
-            $id_rol = $usuario->rol;
-            $menus = Menu::where('estado', 1)->get();
+            // 1) Cargamos TODOS los menús activos
+            // 2) Eager-load de submenus con el filtro según el rol
+            $menus = Menu::where('estado', 1)
+                ->with(['submenus' => function ($q) use ($id_rol) {
+                    // Sólo submenús activos
+                    $q->where('estado', 1);
+
+                    // Si no es admin, filtramos por rol en el pivot
+                    if ($id_rol !== 1) {
+                        $q->whereHas('roles', function ($qr) use ($id_rol) {
+                            $qr->where('rol_submenu.id_rol',    $id_rol)
+                               ->where('rol_submenu.estado',   1);
+                        });
+                    }
+                }])
+                ->get();
+
+            // Armamos el array final sin volver a tocar la BD
             $result = [];
-
             foreach ($menus as $menu) {
-                $submenus = $menu->submenus()
-                    ->whereHas('roles', function ($query) use ($id_rol) {
-                        $query->where('rol_submenu.id_rol', $id_rol)
-                              ->where('rol_submenu.estado', 1);
-                    })
-                    ->where('estado', 1)
-                    ->get(['nombre', 'ruta']);
-
-                // Agregar el menú si tiene submenús
-                if ($submenus->isNotEmpty()) {
+                if ($menu->submenus->isNotEmpty()) {
                     $result[$menu->nombre] = [
-                        'submenu' => $submenus->toArray(),
+                        'submenu' => $menu->submenus
+                            ->map(fn($s) => [
+                                'nombre' => $s->nombre,
+                                'ruta'   => $s->ruta,
+                            ])
+                            ->toArray(),
                     ];
                 }
             }
 
-            // Registrar en los logs para depuración (opcional)
-            // Log::alert(collect($result));
-
-            // Pasar los menús a la vista
             $view->with('menus', $result);
         });
-
     }
 }

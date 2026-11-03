@@ -83,47 +83,45 @@ class AreaService
     {
         try {
 
-            $areas = AreaEmpresa::select(
-                'areas_empresa.id',
-                'cliente.id as id_cliente',
-                'cliente_localidad.nombre AS nombre_localidad',
-                'area.id as id_area',
-                'sub_area.id as id_subarea',
-                'cliente.razon_social as cliente',
-                'sub_area.nombre as subarea',
-                'area.nombre as area',
-                'areas_empresa.estado',
-                'areas_empresa.fecha_creacion'
-            )
-            ->join('cliente_localidad','cliente_localidad.id','=','areas_empresa.id_cliente_localidad')
-            ->join('cliente','cliente.id','=','cliente_localidad.id_cliente')
-            ->join('sub_area','sub_area.id','=','areas_empresa.id_subarea')
-            ->join('area','area.id','=','sub_area.id_area')
-            ->where('areas_empresa.estado',1)
-            ->where('area.estado',1)
-            ->where('sub_area.estado',1)
-            ->orderByRaw('cliente.id, cliente_localidad.id, sub_area.id');
+            $query = AreaEmpresa::select(
+                    'areas_empresa.id',
+                    'cliente.id as id_cliente',
+                    'cliente_localidad.nombre AS nombre_localidad',
+                    'area.id as id_area',
+                    'sub_area.id as id_subarea',
+                    'cliente.razon_social as cliente',
+                    'sub_area.nombre as subarea',
+                    'area.nombre as area',
+                    'areas_empresa.estado',
+                    'areas_empresa.fecha_creacion'
+                )
+                ->join('cliente_localidad', 'cliente_localidad.id', '=', 'areas_empresa.id_cliente_localidad')
+                ->join('cliente',           'cliente.id',           '=', 'cliente_localidad.id_cliente')
+                ->join('sub_area',          'sub_area.id',          '=', 'areas_empresa.id_subarea')
+                ->join('area',              'area.id',              '=', 'sub_area.id_area')
+                ->where('areas_empresa.estado', 1)
+                ->where('area.estado',           1)
+                ->where('sub_area.estado',       1);
 
-
-            if($id_cliente != 0){
-                $areas->where('cliente.id','=',$id_cliente);
+            if ($id_cliente > 0) {
+                $query->where('cliente.id', $id_cliente);
             }
-            $buscar = $request->input('buscar');
-            $perPage = $request->input('perPage', 5);
-            
-            if ($request->filled('buscar')) {
-                $areas->where(function ($q) use ($buscar) {
+
+            if ($buscar = $request->input('buscar')) {
+                $query->where(function ($q) use ($buscar) {
                     $q->where('cliente.razon_social', 'like', "%{$buscar}%")
-                    ->orWhere('sub_area.nombre', 'like', "%{$buscar}%")
-                    ->orWhere('area.nombre', 'like', "%{$buscar}%");
+                      ->orWhere('sub_area.nombre',     'like', "%{$buscar}%")
+                      ->orWhere('area.nombre',         'like', "%{$buscar}%");
                 });
             }
 
-            $resultado = $areas->paginate($perPage)->appends([
-                'buscar' => $buscar,
-                'perPage' => $perPage,
-            ]);
-            return $resultado;
+            $perPage = $request->input('perPage', 5);
+            $areas   = $query
+                ->orderByRaw('cliente.id, cliente_localidad.id, sub_area.id')
+                ->paginate($perPage)
+                ->appends($request->only(['buscar', 'perPage']));
+
+            return $areas;
         } catch (\Exception $e) {
             Log::error('Error al obtener areas empresa: ' . $e->getMessage());
             throw $e;
@@ -326,4 +324,24 @@ class AreaService
             ], 500);
         }
     }
+
+    public function countSubareasByLocalidad(int $idLocalidad): int
+    {
+        try {
+            return AreaEmpresa::query()
+                ->where('id_cliente_localidad', $idLocalidad)
+                ->where('areas_empresa.estado', 1)
+                ->whereHas('subArea.area', function ($q) {
+                    $q->where('estado', 1);
+                })
+                ->count();
+        } catch (\Exception $e) {
+            Log::error(
+                "Error al contar subáreas por localidad [{$idLocalidad}]: " 
+                . $e->getMessage()
+            );
+            throw $e;
+        }
+    }
+
 }

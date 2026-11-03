@@ -5,9 +5,14 @@
 @import "_custom";
 @import "_layout";
 @import "searchFilter";
+@import "bootstrap/scss/bootstrap";
 
 :root {
     --sepro: #19346A;
+}
+
+.fs-7 {
+    font-size: 0.75rem !important;
 }
 
 // Estilos del dasboard
@@ -30,19 +35,6 @@
 .table-responsive {
     overflow-x: auto;
     /* Asegura que la tabla sea desplazable en pantallas pequeñas */
-}
-
-/* Espaciado de las filas de la tabla */
-.table th,
-.table td {
-    padding: 0.75rem;
-    vertical-align: middle;
-}
-
-/* Espaciado entre las tarjetas */
-.row>.col-sm-6 {
-    padding-bottom: 15px;
-    /* Espaciado vertical entre columnas */
 }
 
 @media (max-width: 576px) {
@@ -142,6 +134,12 @@
     border: none;
 }
 
+.btn-primary {
+    background-color: var(--sepro);
+    border-color: var(--sepro);
+    color: #fff;
+}
+
 .btn-sepro:hover {
     background-color: #162d5a; /* una versión más oscura del sepro */
     color: #fff;
@@ -202,4 +200,26 @@
     margin: 2px !important;
     padding: 2px 6px !important;
     font-size: 12px !important;
+}
+
+.form-check-input {
+  border: 2px solid var(--sepro);
+  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
+
+  appearance: none;         /* Elimina el estilo nativo */
+  -webkit-appearance: none; /* Para Safari */
+  vertical-align: sub;   /* Corrige el desajuste vertical */
+  margin-top: 0.2em;        /* Ajusta si se baja mucho */
+}
+
+.square-icon-btn {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }

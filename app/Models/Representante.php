@@ -23,6 +23,11 @@ class Representante extends Model
         'id_usuario_auditor',
         'ver_todas_localidades'
     ];
+
+    public function usuario()
+    {
+        return $this->belongsTo(CiUser::class, 'id_usuario');
+    }
     
     public function cliente()
     {
@@ -32,6 +37,17 @@ class Representante extends Model
     public function localidades()
     {
         return $this->belongsToMany(ClienteLocalidad::class, 'representante_localidad', 'id_representante', 'id_localidad');
+    }
+
+    public function emails()
+    {
+        return $this->hasMany(RepresentanteEmail::class, 'representante_id');
+    }
+
+    public function getCorreoPrincipalAttribute()
+    {
+        $email = $this->emails()->where('principal', true)->first();
+        return $email?->email;
     }
 
 }

@@ -56,6 +56,65 @@ function enviarFormularioMarca() {
 // Exportar la función globalmente
 window.enviarFormularioMarca = enviarFormularioMarca;
 
+function ubicacionesxRevisar(clienteId, mes, anio) {
+  const url = `/api/control_extintor_cliente/${clienteId}/ubicaciones?mes=${mes}&anio=${anio}`;
+  window.showLoading();
+
+  fetch(url)
+    .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
+    .then(json => {
+      const data = json.data;
+      let html;
+
+        if (data.length) {
+            html = `
+            <div class="tabla-scroll">
+                <table class="table table-sm table-striped table-hover mb-0">
+                <thead>
+                    <tr>
+                    <th style="width:50px;">#</th>
+                    <th style="width:200px;">Área</th>
+                    <th style="width:200px;">Ubicación</th>
+                    <th style="width:100px;">Código</th>
+                    <th style="width:100px;">Clase</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map((item, i) => `
+                    <tr>
+                    <td style="width:50px;">${i+1}</td>
+                    <td style="width:200px;">${item.area}</td>
+                    <td style="width:200px;">${item.nombre}</td>
+                    <td style="width:100px;">${item.codigo}</td>
+                    <td style="width:100px;">${item.clase}</td>
+                    </tr>
+                    `).join('')}
+                </tbody>
+                </table>
+            </div>
+            `;
+
+        } else {
+            html = `
+                <div class="p-4 text-center text-muted">
+                Ya has realizado el control de todas las ubicaciones para este mes.
+                </div>`;
+        }
+
+      document.getElementById('ubicacionesModalBody').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('ubicacionesModal')).show();
+    })
+    .catch(err => {
+      console.error(err);
+      window.showToast('Error al cargar ubicaciones.', 'error');
+    })
+    .finally(() => {
+      window.hideLoading();
+    });
+}
+
+window.ubicacionesxRevisar = ubicacionesxRevisar;
+
     window.crearMarca = function() {
         // Configuración para "Nuevo marca"
         document.getElementById('marcaForm').action = 'api/marca/crear';
@@ -466,107 +525,6 @@ function setFlatpickrMonthValue(selector, fecha) {
     instancia.setDate(valor + "-01");
 }
 
-/*async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subareaId = null) {
-    const localidadSelect = document.getElementById("localidad_control");
-    const subareaSelect = document.getElementById("subarea_control");
-    const areaSelect = document.getElementById("area_control");
-
-    const localidades = await fetch(`/api/localidad/cliente/${clienteId}`).then(res => res.json());
-    localidadSelect.innerHTML = '<option value="" disabled selected>Seleccione una localidad</option>';
-    localidades.data.forEach(localidad => {
-        const option = document.createElement("option");
-        option.value = localidad.id;
-        option.textContent = localidad.nombre;
-        localidadSelect.appendChild(option);
-    });
-    if (localidadId) localidadSelect.value = localidadId;
-
-    if (localidadId) {
-        const subareas = await fetch(`/api/localidad/subareas/${localidadId}`).then(res => res.json());
-
-        const areaMap = new Map();
-        areaSelect.innerHTML = '<option value="" disabled selected>Seleccione una área</option>';
-
-        const optgroups = {}; // clave: id_area
-        const optgroupLabels = {}; // para mostrar nombre_area
-
-        subareas.data.forEach(subarea => {
-            const idArea = String(subarea.id_area);
-            const nombreArea = subarea.nombre_area.toUpperCase();
-
-            if (!optgroups[idArea]) {
-                optgroups[idArea] = [];
-                optgroupLabels[idArea] = nombreArea;
-
-                const areaOption = document.createElement("option");
-                areaOption.value = idArea;
-                areaOption.textContent = nombreArea;
-                areaSelect.appendChild(areaOption);
-            }
-
-            optgroups[idArea].push({
-                value: subarea.id_subarea,
-                id_area: idArea,
-                nombreSubarea: subarea.nombre,
-                nombreArea: nombreArea,
-                codigo: subarea.codigo?.toUpperCase() || '',
-                clase: subarea.clase?.toUpperCase() || '',
-                marca: subarea.marca?.toUpperCase() || '',
-                peso: subarea.peso?.toUpperCase() || '',
-                unidad: subarea.unidad?.toUpperCase() || ''
-            });
-        });
-
-        const subareaOptions = Object.values(optgroups).flat();
-
-        if (subareaSelect.tomselect) subareaSelect.tomselect.destroy();
-        subareaSelect.innerHTML = '';
-
-        new TomSelect(subareaSelect, {
-            placeholder: 'Buscar y seleccionar sub-área',
-            options: subareaOptions,
-            optgroups: Object.keys(optgroups).map(idArea => ({
-                value: idArea,
-                label: optgroupLabels[idArea]
-            })),
-            optgroupField: 'nombreArea',
-            valueField: 'value',
-            labelField: 'nombreSubarea',
-            //searchField: ['nombreSubarea', 'codigo', 'clase', 'marca', 'nombreArea'],
-            searchField: ['nombreSubarea', 'codigo', 'nombreArea'],
-            render: {
-                option: function (data, escape) {
-                    return `<div>${escape(data.nombreSubarea)}</div>`;
-                },
-                item: function (data, escape) {
-                    return `<div>${escape(data.nombreSubarea)}</div>`;
-                }
-            },
-            onChange: function (value) {
-                const selected = this.options[value];
-                if (selected) {
-                    document.getElementById("codigo_control").value = selected.codigo || '';
-                    document.getElementById("clase").value = selected.clase || '';
-                    document.getElementById("marca").value = selected.marca || '';
-                    document.getElementById("peso_unidad").value = `${selected.peso || ''} ${selected.unidad || ''}`;
-                    document.getElementById("peso").value = selected.peso || '';
-                    document.getElementById("unidad").value = selected.unidad || '';
-                    document.getElementById("area_control").value = selected.id_area || '';
-                }
-            }
-        });
-
-        if (subareaId) {
-            const tom = subareaSelect.tomselect;
-            tom.setValue(subareaId);
-        }
-    } else {
-        areaSelect.innerHTML = '<option value="" disabled selected>Seleccione una área</option>';
-        if (subareaSelect.tomselect) subareaSelect.tomselect.destroy();
-        subareaSelect.innerHTML = '<option value="" disabled selected>Seleccione una sub-área</option>';
-    }
-}*/
-
 async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subareaId = null) {
     const localidadSelect = document.getElementById("localidad_control");
     const subareaSelect = document.getElementById("subarea_control");
@@ -612,7 +570,9 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
     });
 
     areaSelect.innerHTML = '<option value="" disabled selected>Seleccione un área</option>';
-    areaMap.forEach((nombre, id) => {
+    [...areaMap.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .forEach(([id, nombre]) => {
         const option = document.createElement("option");
         option.value = id;
         option.textContent = nombre;
@@ -621,7 +581,10 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
 
     areaSelect.onchange = function () {
         const selectedAreaId = this.value;
-        const subareaOptions = subareasPorArea[selectedAreaId] || [];
+        let subareaOptions = subareasPorArea[selectedAreaId] || [];
+        subareaOptions = subareaOptions.sort((a, b) =>
+            a.nombreSubarea.localeCompare(b.nombreSubarea)
+        );
 
         document.getElementById("codigo_control").value = '';
         document.getElementById("clase").value = '';
@@ -647,16 +610,38 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
                     return `<div>${escape(data.nombreSubarea)}</div>`;
                 }
             },
-            onChange: function (value) {
+            onChange: async function (value) {
                 const selected = this.options[value];
                 if (selected) {
+                    const peso = selected.peso != null ? parseFloat(selected.peso).toString() : '';
+
                     document.getElementById("codigo_control").value = selected.codigo || '';
                     document.getElementById("clase").value = selected.clase || '';
                     document.getElementById("marca").value = selected.marca || '';
-                    document.getElementById("peso_unidad").value = `${selected.peso || ''} ${selected.unidad || ''}`;
-                    document.getElementById("peso").value = selected.peso || '';
+                    document.getElementById("peso_unidad").value = `${peso} ${selected.unidad || ''}`.trim();
+                    document.getElementById("peso").value = peso;
                     document.getElementById("unidad").value = selected.unidad || '';
                     document.getElementById("area_control").value = selected.id_area || '';
+
+                    if (selected.codigo) {
+                        try {
+                            showLoading();
+                            const idCliente = window.idCliente;
+                            const idLocalidad = document.getElementById('id_localidad')?.value || '';
+
+                            const res = await fetch(`/api/control-extintor/ultimo?cliente=${idCliente}&localidad=${idLocalidad}&codigo=${selected.codigo}`);
+                            const data = await res.json();
+
+                            const idControlExtintor = $('#controlExtintorId').val();
+                            if (data && data.id) {
+                                await setValoresFormulario(data, idControlExtintor ? 'editar' :'nuevo');
+                            }
+                        } catch (error) {
+                            console.error('Error cargando último control:', error);
+                        } finally {
+                            hideLoading();
+                        }
+                    }
                 }
             }
         });
@@ -690,9 +675,8 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
             }
         }
 
-        if (control_extintores.fecha_fabricacion) setFlatpickrMonthValue('#fecha_recarga', control_extintores.fecha_fabricacion);
-        if (control_extintores.fecha_prueba_hidrostatica) setFlatpickrMonthValue('#fecha_proxima_recarga', control_extintores.fecha_prueba_hidrostatica);
-
+        if (control_extintores.fecha_recarga) setFlatpickrMonthValue('#fecha_recarga', control_extintores.fecha_recarga);
+        if (control_extintores.fecha_prox_recarga) setFlatpickrMonthValue('#fecha_proxima_recarga', control_extintores.fecha_prox_recarga);
         if (modo !== 'nuevo') {
             if (control_extintores.id) $('#controlExtintorId').val(control_extintores.id);
         }else{
@@ -702,15 +686,18 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         if (control_extintores.codigo) $('#codigo_control').val(control_extintores.codigo);
         if (control_extintores.clase) $('#clase').val(control_extintores.clase);
         if (control_extintores.marca) $('#marca').val(control_extintores.marca);
-        if (control_extintores.peso && control_extintores.unidad) $('#peso_unidad').val(`${control_extintores.peso} ${control_extintores.unidad}`);
+        if (control_extintores.peso && control_extintores.unidad) {
+            const pesoFormateado = parseFloat(control_extintores.peso).toString();
+            $('#peso_unidad').val(`${pesoFormateado} ${control_extintores.unidad}`);
+        }
         if (control_extintores.peso) $('#peso').val(control_extintores.peso);
         if (control_extintores.unidad) $('#unidad').val(control_extintores.unidad);
         if (control_extintores.id_mango) $('#mango').val(control_extintores.id_mango);
         if (control_extintores.id_mano) $('#mano').val(control_extintores.id_mano);
         if (control_extintores.id_seguro) $('#seguro').val(control_extintores.id_seguro);
         if (control_extintores.id_cilindro) $('#cilindro').val(control_extintores.id_cilindro);
-        if (control_extintores.fecha_recarga) $('#fecha_recarga').val(control_extintores.fecha_recarga);
-        if (control_extintores.fecha_prox_recarga) $('#fecha_proxima_recarga').val(control_extintores.fecha_prox_recarga);
+        //if (control_extintores.fecha_recarga) $('#fecha_recarga').val(control_extintores.fecha_recarga);
+        //if (control_extintores.fecha_prox_recarga) $('#fecha_proxima_recarga').val(control_extintores.fecha_prox_recarga);
         if (control_extintores.fecha_fabricacion) $('#fecha_fabricacion').val(control_extintores.fecha_fabricacion);
         if (control_extintores.fecha_prueba_hidrostatica) $('#fecha_prueba_hidrostatica').val(control_extintores.fecha_prueba_hidrostatica);
         if (control_extintores.id_area_seguridad) $('#area_seguridad').val(control_extintores.id_area_seguridad);
@@ -725,10 +712,10 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         if (control_extintores.observaciones) $('#observaciones').val(control_extintores.observaciones);
 
         // Observaciones generales (multi-select TomSelect)
-        if (control_extintores.observaciones_nomenclatura?.length > 0) {
-            const tom = document.getElementById('observaciones_generales')?.tomselect;
-            if (tom) {
-                tom.clear(true);
+        const tom = document.getElementById('observaciones_generales')?.tomselect;
+        if (tom) {
+            tom.clear(true);
+            if (control_extintores.observaciones_nomenclatura?.length > 0){
                 tom.setValue(control_extintores.observaciones_nomenclatura.map(item => String(item.id)));
             }
         }
@@ -785,10 +772,33 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         await mostrarFormularioControlExtintor(control_extintores, id_cliente, 'editar');
     };
 
+    function viewImage(image, marca, fecha) {
+        // Get modal elements
+        const modalImage = document.getElementById('modalImage');
+        const modalTitle = document.getElementById('imageModalLabel');
+        const downloadLink = document.getElementById('downloadImage');
+
+        // Las imágenes viven en R2: llega una URL; se mantiene el base64 por compatibilidad
+        const imageSrc = image.startsWith('http') ? image : `data:image/jpg;base64,${image}`;
+
+        // Update modal content
+        modalImage.src = imageSrc; // Set the image source
+        modalTitle.textContent = `Marca: ${marca} | Fecha: ${fecha}`; // Update the modal title
+        downloadLink.href = imageSrc; // Set the download link
+        downloadLink.download = `imagen_${marca}_${fecha}.jpg`; // <- aquí defines nombre y extensión
+
+        // Show the modal
+        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+        imageModal.show();
+    }
+
+    window.viewImage = viewImage;
+
 
     flatpickr(".flatpickr-month", {
         locale: Spanish,
         altInput: true,
+        disableMobile: true,
         altFormat: "F Y",
         dateFormat: "Y-m",
         plugins: [
@@ -807,6 +817,7 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
 
     flatpickr("#fecha_revision", {
         locale: Spanish,
+        disableMobile: true,
         altInput: true,
         altFormat: "d F Y",
         dateFormat: "Y-m-d",
@@ -884,10 +895,6 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
     }
 
     // Seleccionar el modal, la imagen del modal y el enlace de descarga
-    const imageModal = document.getElementById('imageModal');
-    const modalImage = document.getElementById('modalImage');
-    const downloadLink = document.getElementById('downloadImage');
-    const modalTitle = document.getElementById('imageModalLabel'); // Seleccionar el título del modal
     const hidranteSelect = document.getElementById("hidrante");
 
     function actualizarEstadoDimensionVidrio() {
@@ -913,30 +920,6 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
     hidranteSelect.addEventListener("change",actualizarEstadoDimensionVidrio);
 
     actualizarEstadoDimensionVidrio();
-
-
-    // Evento al abrir el modal
-    if(!imageModal) return;
-    imageModal.addEventListener('show.bs.modal', function (event) {
-        // Botón que activó el modal
-        const button = event.relatedTarget;
-
-        // Obtener la URL de la imagen (en R2) y los datos adicionales
-        const imageUrl = button.getAttribute('data-image');
-        const marca = button.getAttribute('data-marca'); // Asegúrate de tener este dato en el botón
-        const fecha = button.getAttribute('data-fecha'); // Asegúrate de tener este dato en el botón
-
-        // Configurar el nombre del archivo para descargar
-        const nombreArchivo = `Control_extintor_${marca} - ${fecha}.jpg`; // Cambia la extensión si es necesario
-        modalTitle.textContent = `Control_extintor ${marca} - ${fecha}`;
-
-        // Mostrar la imagen en el src del <img>
-        modalImage.src = imageUrl;
-
-        // Configurar el enlace de descarga
-        downloadLink.href = imageUrl;
-        downloadLink.download = nombreArchivo;
-    });
 
     // Evento para cambiar cliente y cargar localidades
     document.getElementById("cliente_control").addEventListener("change", function() {
@@ -983,27 +966,33 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         const checkbox = document.getElementById(checkboxId);
         const input = document.getElementById(inputId);
 
-        if (checkbox.checked) {
+        if (!checkbox.checked) {
+            input.classList.remove('bg-light', 'text-muted');
+            input.removeAttribute('readonly');
+            input.setAttribute('required', 'required');
+        } else {
             input.value = '';
             input.classList.add('bg-light', 'text-muted');
             input.setAttribute('readonly', 'readonly');
             input.removeAttribute('required');
-        } else {
-            input.classList.remove('bg-light', 'text-muted');
-            input.removeAttribute('readonly'); 
-            input.setAttribute('required', 'required');
         }
     }
+
 
     const toggleInput = (checkboxId, inputId) => {
         const checkbox = document.getElementById(checkboxId);
         const input = document.getElementById(inputId);
 
-        checkbox.addEventListener('change', function () {
+        checkbox.addEventListener('change', () => {
             actualizarEstadoinput(checkboxId, inputId);
         });
 
-        // Ejecutar inicialmente según el estado del checkbox
+        if (input.value) {
+            checkbox.checked = true;
+        } else {
+            checkbox.checked = false;
+        }
+
         actualizarEstadoinput(checkboxId, inputId);
     };
 
@@ -1012,10 +1001,202 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
 
 
     document.querySelectorAll('.tom-select').forEach(select => {
-        new TomSelect(select, {
+        const tomSelect = new TomSelect(select, {
             plugins: ['remove_button'],
             placeholder: 'Seleccione una o más opciones',
         });
+        tomSelect.wrapper.classList.remove('multi');
     });
 
+    window.updateQueryParam = function (param, value) {
+        const url = new URL(window.location.href);
+        if (value) {
+            url.searchParams.set(param, value);
+        } else {
+            url.searchParams.delete(param);
+        }
+        // Mostrar loading antes de redirigir
+        window.showLoading();
+
+        // Pequeña demora opcional para que se vea el loading
+        setTimeout(() => {
+            window.location.href = url.toString();
+        }, 100);
+    };
+
+    window.exportarExcel = async function (idCliente) {
+          window.showLoading();
+
+          // 1. Construir URL con params
+          const urlActual = new URL(window.location.href);
+          const currentParams = urlActual.searchParams;
+          const exportUrl = new URL('/api/control-extintores/export', window.location.origin);
+          const exportParams = new URLSearchParams();
+
+          currentParams.forEach((value, key) => {
+            exportParams.set(key, value);
+          });
+          if (idCliente) {
+            exportParams.set('id_cliente', idCliente);
+          }
+          document.querySelectorAll('.toggle-col:checked').forEach(chk => {
+            if (chk.value === 'acciones') return;
+            exportParams.append('columns[]', chk.value);
+          });
+          exportUrl.search = exportParams.toString();
+
+          try {
+            // 2. Petición y obtención de blob
+            const response = await fetch(exportUrl.toString(), { credentials: 'include' });
+            if (!response.ok) {
+              throw new Error(`Error en la exportación: ${response.status} ${response.statusText}`);
+            }
+            const blob = await response.blob();
+
+            // 3. Extraer filename del header
+            let filename = 'export.xlsx';
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const filenameMatch = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i);
+            if (filenameMatch) {
+              filename = decodeURIComponent(filenameMatch[1]);
+            }
+
+            // 4. Descargar usando blob URL
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+
+          } catch (err) {
+            console.error(err);
+            alert('Ocurrió un error al exportar.');
+          } finally {
+            // 5. Ocultar loading
+            window.hideLoading();
+          }
+    };
+
+    document.getElementById('formEnviarCorreo').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const emailsRaw = document.getElementById('emails').value;
+
+        const emails = emailsRaw
+            .split(',')
+            .map(email => email.trim())
+            .filter(email => email !== '');
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        // Validar que todos los correos sean válidos
+        const invalidEmails = emails.filter(email => !emailRegex.test(email));
+
+        if (emails.length === 0 || invalidEmails.length > 0) {
+            const message = invalidEmails.length > 0
+                ? `Correo inválido: ${invalidEmails.join(', ')}`
+                : 'Debe ingresar al menos un correo válido.';
+            window.showToast(message, 'error');
+            return;
+        }
+
+        modalHelper.close('modalEnviarCorreo');
+
+        window.showConfirm(
+            '¿Desea enviar el reporte de extintores por correo?',
+            () => {
+                window.showLoading();
+
+                const form = document.getElementById('formEnviarCorreo');
+                const url = `/api/control-extintores/enviar-reporte`;
+                const method = 'POST';
+
+                const payload = {
+                    emails: emails
+                };
+
+                // hidden inputs
+                const hiddenInputs = form.querySelectorAll('input[type="hidden"]');
+                hiddenInputs.forEach(input => {
+                    if (input.id) {
+                        payload[input.id] = input.value;
+                    }
+                });
+
+                // parámetros de la URL
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.forEach((value, key) => {
+                    payload[key] = value;
+                });
+
+                // columnas seleccionadas
+                const columns = [];
+                document.querySelectorAll('.toggle-col:checked').forEach(chk => {
+                    if (chk.value === 'acciones') return;
+                    columns.push(chk.value);
+                });
+                payload.columns = columns;
+
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        window.showToast(data.message, 'success');
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        window.showToast('Error al enviar el correo.', 'error');
+                    })
+                    .finally(() => {
+                        window.hideLoading();
+                    });
+            },
+            () => {
+                modalHelper.open('modalEnviarCorreo');
+            }
+        );
+    });
+
+    const fechaRecargaInput = document.getElementById('fecha_recarga');
+    const fechaProximaRecargaInput = document.getElementById('fecha_proxima_recarga');
+
+    const proxRecargaPicker = flatpickr(fechaProximaRecargaInput, {
+        plugins: [new monthSelectPlugin({
+            shorthand: false,
+            dateFormat: "Y-m-d",   // formato a enviar
+            altFormat: "F Y",      // formato visible
+            theme: "light"
+        })],
+        disableMobile: true,
+        altInput: true,
+        locale: 'es'
+    });
+
+    flatpickr(fechaRecargaInput, {
+        plugins: [new monthSelectPlugin({
+            shorthand: false,
+            dateFormat: "Y-m-d",
+            altFormat: "F Y",
+            theme: "light"
+        })],
+        disableMobile: true,
+        altInput: true,
+        locale: 'es',
+        onChange: function (selectedDates) {
+            if (selectedDates.length > 0) {
+                const fecha = selectedDates[0];
+                const fechaSumada = new Date(fecha.getFullYear() + 1, fecha.getMonth(), 1);
+                proxRecargaPicker.setDate(fechaSumada, true);
+            }
+        }
+    });
 });

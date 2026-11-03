@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Models\Role;
+
 
 class Submenu extends Model
 {
@@ -25,6 +27,6 @@ class Submenu extends Model
 
     public function roles()
     {
-        return $this->belongsToMany(Rol::class, 'rol_submenu', 'id_submenu', 'id_rol');
+        return $this->belongsToMany(Role::class, 'rol_submenu', 'id_submenu', 'id_rol');
     }
 }

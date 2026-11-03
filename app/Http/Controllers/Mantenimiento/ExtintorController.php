@@ -3,36 +3,39 @@
 namespace App\Http\Controllers\Mantenimiento;
 
 use App\Exports\ControlExtintorExport;
+use App\Exports\ResumenExtintoresExport;
 use App\Http\Controllers\Controller;
-use App\Models\Area;
 use App\Models\ClaseExtintor;
-use App\Models\Cliente;
 use App\Models\ControlExtintorCli;
 use App\Models\MarcaExtintor;
 use App\Models\TamanoExtintor;
 use App\Services\AreaService;
+use App\Services\ClienteLocalidadService;
 use App\Services\ClienteService;
 use App\Services\ExtintorService;
 use App\Services\NomenclaturaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Services\RepresentanteService;
+use App\Services\EmailService;
+use App\Helpers\AccesoHelper;
+use App\Helpers\Utils;
 
 class 
 ExtintorController extends Controller
 {
-    protected $extintorService, $nomenclaturaService, $areaService, $clienteService;
-
-
-    public function __construct(ExtintorService $extintorService)
+    protected $extintorService, $nomenclaturaService, $areaService, $clienteService, $clienteLocalidadService;
+    protected $representanteService;
+    public function __construct(ExtintorService $extintorService, RepresentanteService $representanteService)
     {
         $this->extintorService = $extintorService;
         $this->nomenclaturaService = new NomenclaturaService;
         $this->areaService = new AreaService;
         $this->clienteService = new ClienteService;
-
+        $this->clienteLocalidadService = new ClienteLocalidadService;
+        $this->representanteService = $representanteService;
     }
     public function index()
     {
@@ -185,27 +188,49 @@ ExtintorController extends Controller
         } 
     }    
 
-    public function obtener_control_extintor_por_cliente($id_cliente, array $filtros = [])
+    public function obtener_control_extintor_por_cliente(Request $request, $id_cliente)
     {
+
+        // Verifica si falta 'anio' o 'mes' (solo los que no están presentes)
+        $params = $request->query();
+        $debeRedirigir = false;
+
+        if (!$request->has('anio')) {
+            $params['anio'] = now()->year;
+            $params['mes'] = now()->month;
+            $debeRedirigir = true;
+        }
+    
+        if ($debeRedirigir) {
+            return redirect()->route('obtener_control_extintor_por_cliente', ['id_cliente' => $id_cliente] + $params);
+        }
+
+        $id_localidad = $request->query('localidad', 0);
+
+        if (auth()->user()->hasRole('Cliente')) {
+            if (!AccesoHelper::puedeAccederClienteYLocalidad($id_cliente, $id_localidad)) {
+                abort(403, 'No tienes permiso para acceder a este cliente o localidad');
+            }
+        }
+
         try {
 
-            $filtros = request()->only(['mes', 'anio']);
-            $id_localidad = request()->query('localidad');
-
-            $controlExtintores = $this->extintorService->get_control_extintor($id_cliente, $id_localidad, $filtros);
-            $ultimoControlExtintor = $this->extintorService->getUltimoControl($id_cliente, $id_localidad);
-
+            $controlExtintores = $this->extintorService->get_control_extintor($id_cliente, $request);
+            $ultimoControlExtintor = $this->extintorService->getUltimoControl($id_cliente, $request->query('localidad'));
             $areas = $this->areaService->get_areas_by_cliente($id_cliente);
-
             $clases = $this->extintorService->getClases(['estado'=>1]);
             $marcas = $this->extintorService->getMarcas(['estado'=>1]);
             $pesos = $this->extintorService->getPesos(['estado'=>1]);
             $nomenclaturas = $this->nomenclaturaService->getNomenclaturasByTipo(['estado'=>1]);
-
             $clientes = $this->clienteService->obtenerClientesActivos($id_cliente);
+            $localidad = $this->clienteLocalidadService->getLocalidadById($id_localidad);
+            $totalExtintoresxLocalidad = $this->areaService->countSubareasByLocalidad($id_localidad);
 
+            $nombreCliente = $clientes['0']->razon_social;
+            $nombreLocalidad = $localidad->nombre;
+            $emails = $this->representanteService->obtenerCorreosPorCliente($id_cliente);
 
-            return view('Submenus.control_extintor', compact('controlExtintores', 'id_cliente','areas','clases','marcas','pesos', 'nomenclaturas','clientes', 'ultimoControlExtintor'));
+            return view('Submenus.control_extintor', compact('controlExtintores', 'id_cliente','areas','clases','marcas','pesos', 'nomenclaturas','clientes', 'ultimoControlExtintor', 'nombreCliente', 'nombreLocalidad', 'emails', 'totalExtintoresxLocalidad'));
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
@@ -249,7 +274,6 @@ ExtintorController extends Controller
             $validatedData = $request->validate([
                 // 'id_cliente' => 'required|exists:cliente,id',
                 'localidad_control' => 'required|exists:cliente_localidad,id',
-                'fecha_revision' => 'required|date',
                 'codigo_control' => 'required|string',
                 'clase' => 'required|string',
                 'marca' => 'required|string',
@@ -276,7 +300,19 @@ ExtintorController extends Controller
                 'observaciones' => 'nullable|string',
                 'observaciones_generales' => 'nullable|array',
                 'observaciones_generales.*' => 'exists:nomenclatura,id',
-                'imagen' => 'nullable|image|max:2048', // Limitar a 2MB
+                'imagen' => 'nullable|image|max:2048',
+                'fecha_revision'       => ['required','date',
+                    function ($attr, $value, $fail) use ($request) {
+                        $exists = $this->extintorService->existsControlExtintor(
+                            $request->input('localidad_control'),
+                            $request->input('subarea_control'),
+                            $value
+                        );
+                        if ($exists) {
+                            $fail('Ya existe un control registrado para este extintor en el mes seleccionado.');
+                        }
+                    }
+                ],
             ]);
             // Llamar al servicio para almacenar los datos
             $result = $this->extintorService->storeControlExtintor($validatedData);
@@ -314,7 +350,6 @@ ExtintorController extends Controller
             $validatedData = $request->validate([
                 'localidad_control' => 'required|exists:cliente_localidad,id',
                 'subarea_control' => 'required|exists:sub_area,id',
-                'fecha_revision' => 'required|date',
                 'codigo_control' => 'required|string',
                 'clase' => 'required|string',
                 'marca' => 'required|string',
@@ -341,6 +376,18 @@ ExtintorController extends Controller
                 'observaciones_generales' => 'nullable|array',
                 'observaciones_generales.*' => 'exists:nomenclatura,id',
                 'imagen' => 'nullable|image|max:2048', // Limitar a 2MB
+                'fecha_revision'       => ['required','date',
+                    /*function ($attr, $value, $fail) use ($request) {
+                        $exists = $this->extintorService->existsControlExtintor(
+                            $request->input('localidad_control'),
+                            $request->input('subarea_control'),
+                            $value
+                        );
+                        if ($exists) {
+                            $fail('Ya existe un control registrado para este extintor en el mes seleccionado.');
+                        }
+                    }*/
+                ],
             ]);
 
             $resultado = $this->extintorService->updateControlExtintor($id, $validatedData);
@@ -386,23 +433,142 @@ ExtintorController extends Controller
     {
         
         // Obtener los datos filtrados que se muestran en la vista
-        $filtros = request()->only(['mes', 'anio']);
         $empresa = $this->clienteService->getClienteById($request->id_cliente);
-        $data_controlExtintores = $this->extintorService->get_control_extintor($request->id_cliente, $filtros);
-        $controlExtintores = [];
+        $dataControlExtintores = $this->extintorService->get_control_extintor($request->id_cliente, $request, false);
 
-        foreach ($data_controlExtintores as $item) {
-            $ubicacion = $item['ubicacion'];
-            if (!isset($controlExtintores[$ubicacion])) {
-                $controlExtintores[$ubicacion] = [];
-            }
-            $controlExtintores[$ubicacion][] = $item;
-        }
-        //Log::alert("empresa controlExtintores");
-        //Log::alert(json_encode($controlExtintores,JSON_PRETTY_PRINT));
+        // lee columnas a mostrar (o un array vacío si no vienen)
+        $selected = $request->input('columns', []);
+
+        // Generar timestamp en formato YYYYMMDD_HHMMSS
+        $timestamp = now()->format('Ymd_His');
+
+        // Nombre dinámico: resumen_extintores_20250708_215530.xlsx
+        $filename = "control_extintores_{$timestamp}.xlsx";
 
         // Pasar los datos a la exportación
-        return Excel::download(new ControlExtintorExport($controlExtintores, $empresa), 'control_extintores.xlsx');
+        return Excel::download(
+            new ControlExtintorExport($dataControlExtintores, $empresa, $selected),
+            $filename);
+    }
+
+
+    public function sendReportEmail(Request $request, EmailService $emailService)
+    {
+        $emails = $request->input('emails', []); // lista de correos desde el frontend
+
+        $empresa = $this->clienteService->getClienteById($request->id_cliente);
+        $nombreCliente = $request->input('nombreCliente', '');
+        $nombreLocalidad = $request->input('nombreLocalidad', '');
+        $mes = (int) $request->input('mes', '');
+        $nombreMes = Utils::nombreDelMes($mes);
+        $anio = $request->input('anio', '');
+        $fechaRevision = $nombreMes . ' ' . $anio;
+        $dataControlExtintores = $this->extintorService->get_control_extintor($request->id_cliente, $request, false);
+
+        // lee columnas a mostrar (o un array vacío si no vienen)
+        $selected = $request->input('columns', []);
+        // Generar y guardar el Excel en storage temporal
+        $fileName = 'control_extintores_' . now()->format('Ymd_His') . '.xlsx';
+        Excel::store(new ControlExtintorExport($dataControlExtintores, $empresa, $selected), $fileName, 'local');
+
+        // Enviar el correo
+        /*foreach ($emails as $email) {
+            Mail::to($email)->send(new ControlExtintorReportMail($nombreCliente, $nombreLocalidad, $fileName));
+        }*/
+        $emailService->sendEmailWithAttachment(
+            $emails,
+            'Reporte de Control de Extintores',
+            'emails.control_extintores',
+            compact('nombreCliente', 'nombreLocalidad', 'fechaRevision'),
+            $fileName
+        );
+
+        // Eliminar el archivo después de enviar (opcional)
+        Storage::delete($fileName);
+
+        return response()->json(['message' => 'Correo enviado correctamente']);
+    }
+
+    public function ubicacionesPorRevisar(Request $request, $clienteId)
+    {
+        $mes  = $request->query('mes');
+        $anio = $request->query('anio');
+
+        $service     = app(ExtintorService::class);
+        $ubicaciones = $service->getSubareasDisponiblesByLocalidad($clienteId, $mes, $anio);
+
+        return response()->json([
+            'data'    => $ubicaciones,
+            'cliente' => $clienteId,
+            'mes'     => $mes,
+            'anio'    => $anio,
+        ]);
+    }
+
+    public function detalleExtintorExcel(Request $request, $cliente)
+    {
+        $fechaRevision = $request->query('fecha_revision');
+        $fechaRecarga  = $request->query('fecha_prox_recarga');
+
+        $service = app(ExtintorService::class);
+        $rows = $service->getDetalleExcel($cliente, $fechaRevision, $fechaRecarga);
+        $otrasNovedades = $service->getOtrasNovedades($cliente, $fechaRevision);
+        $accesorios = $service->getAccesoriosExtintores($cliente, $fechaRevision);
+        $novedadesGabinete = $service->getNovedadesGabinete($cliente, $fechaRevision);
+        $novedadesEspeciales = $service->getNovedadesEspeciales($cliente, $fechaRevision);
+
+        return response()->json([
+            'cliente'              => $cliente,
+            'fecha_revision'       => $fechaRevision,
+            'fecha_prox_recarga'   => $fechaRecarga,
+            'data'                 => $rows,
+            'novedades'            => $otrasNovedades,
+            'accesorios_extintor'  => $accesorios,
+            'novedades_gabinete'   => $novedadesGabinete,
+            'novedades_especiales' => $novedadesEspeciales,
+        ]);
+    }
+
+
+    public function exportResumenExtintores(Request $request)
+    {
+        $id_localidad = $request->input('id_localidad');
+        $empresa = $this->clienteService->getClienteByLocalidad($id_localidad);
+        $localidad = $this->clienteLocalidadService->getLocalidadById($id_localidad);
+        $fechaRevision = $request->input('fecha_revision');
+        $fechaRecarga = $request->input('fecha_prox_recarga');
+
+        $data = $this->extintorService->getDetalleExcel($id_localidad, $fechaRevision, $fechaRecarga);
+
+        // Generar timestamp en formato YYYYMMDD_HHMMSS
+        $timestamp = now()->format('Ymd_His');
+
+        // Nombre dinámico: resumen_extintores_20250708_215530.xlsx
+        $filename = "resumen_extintores_{$timestamp}.xlsx";
+
+        return Excel::download(
+            new ResumenExtintoresExport($data, $empresa, $localidad),
+            $filename
+        );
+    }
+
+    public function getUltimoControl(Request $request)
+    {
+        try {
+            $idCliente = $request->query('cliente');
+            $idLocalidad = $request->query('localidad');
+            $codigo = $request->query('codigo');
+
+            if (!$idCliente) {
+                return response()->json(['error' => 'Cliente es requerido'], 400);
+            }
+
+            $control = $this->extintorService->getUltimoControl($idCliente, $idLocalidad, $codigo);
+            return response()->json($control);
+        } catch (\Exception $e) {
+            //\Log::error('Error al obtener el último control extintor: ' . $e->getMessage());
+            return response()->json(['error' => 'Error interno del servidor'], 500);
+        }
     }
 
 }

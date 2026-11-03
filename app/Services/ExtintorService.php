@@ -6,10 +6,12 @@ use App\Models\ClaseExtintor;
 use App\Models\ControlExtintorCli;
 use App\Models\MarcaExtintor;
 use App\Models\TamanoExtintor;
+use App\Models\AreaEmpresa;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class ExtintorService
 {
@@ -176,9 +178,12 @@ class ExtintorService
         }
     }
 
-    public function get_control_extintor($id_cliente, $id_localidad, $filtros)
+    public function get_control_extintor($id_cliente, $request, $paginado = true)
     {
         try {
+
+            $filtros = $request->only(['mes', 'anio', 'localidad', 'buscar']);
+            $perPage = $request->input('perPage', 5);
 
             $query = ControlExtintorCli::select(
                 "cliente.razon_social",
@@ -267,8 +272,8 @@ class ExtintorService
                 $query->where('cliente.id', $id_cliente);
             }
             
-            if (!empty($id_localidad)) {
-                $query->where('control_extintor_cli.id_cliente_localidad', $id_localidad);
+            if (isset($filtros['localidad'])) {
+                $query->where('control_extintor_cli.id_cliente_localidad', $filtros['localidad']);
             }
             
             $filtros['anio'] = $filtros['anio'] ?? date('Y');
@@ -281,17 +286,39 @@ class ExtintorService
             if(isset($filtros['proxima_recarga_desde'])){
                 $query->where('control_extintor_cli.fecha_prox_recarga','>=', $filtros['proxima_recarga_desde']);
             }
-            // Log::alert($query->tosql());
-            //$resultado = $query->orderByDesc('control_extintor_cli.id')->get();
-            $resultado = $query->with('observacionesNomenclatura')->orderByDesc('control_extintor_cli.id')->get();
-            return $resultado;
+
+
+            if ($request->filled('buscar')) {
+                $buscar = $request->input('buscar');
+                $query->where(function ($q) use ($buscar) {
+                    $q->where('control_extintor_cli.codigo', 'like', "%{$buscar}%")
+                        ->orWhere('control_extintor_cli.clase', 'like', "%{$buscar}%")
+                        ->orWhere('area.nombre', 'like', "%{$buscar}%")  // AREA
+                        ->orWhere('sub_area.nombre', 'like', "%{$buscar}%")  // UBICACION
+                        ->orWhere('control_extintor_cli.marca', 'like', "%{$buscar}%");
+                });
+            }
+
+            $query->with('observacionesNomenclatura')->orderByDesc('control_extintor_cli.id');
+
+            if ($paginado) {
+                return $query->paginate($perPage)->appends([
+                    'mes' => $filtros['mes'] ?? '',
+                    'anio' => $filtros['anio'] ?? '',
+                    'localidad' => $filtros['localidad'] ?? '',
+                    'buscar' => $filtros['buscar'] ?? '',
+                    'perPage' => $perPage,
+                ]);
+            } else {
+                return $query->get();
+            }
         } catch (\Exception $e) {
             Log::error('Error al obtener areas empresa: ' . $e->getMessage());
             throw $e;
         }
     } 
 
-    public function getUltimoControl($id_cliente, $id_localidad)
+    public function getUltimoControl($id_cliente, $id_localidad, $codigoExtintor = FALSE)
     {
         try {
             $query = ControlExtintorCli::select(
@@ -370,6 +397,10 @@ class ExtintorService
                 $query->where('control_extintor_cli.id_cliente_localidad', $id_localidad);
             }
             
+            if (!empty($codigoExtintor)) {
+                $query->where('control_extintor_cli.codigo', $codigoExtintor);
+            }
+
             //return $query->orderByDesc('control_extintor_cli.id')->first();
             return $query->with('observacionesNomenclatura')->orderByDesc('control_extintor_cli.id')->first();;
 
@@ -487,7 +518,7 @@ class ExtintorService
             $controlExtintor->id_usuario = $id_usuario;
 
             if (isset($data['imagen'])) {
-                // Subir la imagen a R2 (almacenamiento de objetos) y guardar solo la ruta
+                // Subir la imagen a R2 (S3) y guardar solo la key en la BD
                 $file = $data['imagen'];
                 $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
                 $key = 'extintores/' . uniqid('', true) . '.' . $ext;
@@ -548,7 +579,7 @@ class ExtintorService
         $controlExtintor->observaciones = $input['observaciones'] ?: null;
         $controlExtintor->fecha_actualizacion = now();
     
-        // Si se sube una nueva imagen, la sube a R2 y guarda la ruta; si no, mantiene la actual
+        // Si se sube una nueva imagen, la sube a R2 (S3) y guarda la key; de lo contrario, mantiene la actual
         if (!empty($input['imagen'])) {
             $file = $input['imagen'];
             $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
@@ -564,6 +595,257 @@ class ExtintorService
         return $controlExtintor;
 
     }
-    
-    
+
+
+    public function existsControlExtintor($id_cliente_localidad, $id_subarea_empresa, $fecha_revision)
+    {
+        $dt = Carbon::parse($fecha_revision);
+        return ControlExtintorCli::where('id_cliente_localidad', $id_cliente_localidad)
+                    ->where('id_subarea_empresa',   $id_subarea_empresa)
+                    ->whereYear('fecha_revision',   $dt->year)
+                    ->whereMonth('fecha_revision',  $dt->month)
+                    ->exists();
+
+    }
+
+    /**
+     * Obtiene las subáreas asignadas a una localidad que aún NO
+     * han sido controladas en el mes y año indicados.
+     *
+     * @param  int  $idLocalidad
+     * @param  int  $mes       (1–12)
+     * @param  int  $anio      (YYYY)
+     * @return \Illuminate\Support\Collection
+     */
+    public function getSubareasDisponiblesByLocalidad(int $idLocalidad, int $mes, int $anio)
+    {
+        try {
+            $controladas = ControlExtintorCli::query()
+                ->where('id_cliente_localidad', $idLocalidad)
+                ->where('estado', 1)
+                ->whereMonth('fecha_revision', $mes)
+                ->whereYear('fecha_revision', $anio)
+                ->distinct()
+                ->pluck('id_subarea_empresa');
+
+            $disponibles = AreaEmpresa::select(
+                    'areas_empresa.id',
+                    'area.nombre   AS area',
+                    'sub_area.id   AS id_subarea',
+                    'sub_area.nombre',
+                    'sub_area.codigo',
+                    'sub_area.clase',
+                    'sub_area.marca',
+                    'sub_area.peso',
+                    'sub_area.unidad'
+                )
+                ->join('sub_area', 'sub_area.id',      '=', 'areas_empresa.id_subarea')
+                ->join('area',     'area.id',          '=', 'sub_area.id_area')
+                ->where('areas_empresa.id_cliente_localidad', $idLocalidad)
+                ->where('areas_empresa.estado',             1)
+                ->where('sub_area.estado',                  1)
+                ->whereNotIn('areas_empresa.id_subarea',    $controladas)
+                ->get();
+
+            return $disponibles;
+        } catch (\Exception $e) {
+            Log::error("Error al obtener subáreas disponibles [{$idLocalidad}, mes={$mes}, año={$anio}]: ".$e->getMessage());
+            throw $e;
+        }
+    }
+
+
+    public function getDetalleExcel(
+        int $idClienteLocalidad,
+        ?string $fechaRevision,
+        ?string $fechaRecarga
+    ) {
+        return DB::table('control_extintor_cli as cec')
+            ->join('sub_area as sa', 'sa.id', '=', 'cec.id_subarea_empresa')
+            ->select([
+                'cec.codigo',
+                'sa.nombre as nombre_ubicacion',
+                'cec.fecha_revision',
+                'cec.fecha_prox_recarga',
+                'cec.clase',
+                'cec.peso',
+                'cec.unidad',
+                 DB::raw("(
+                    SELECT IFNULL(GROUP_CONCAT(n.abreviatura SEPARATOR ', '), '-')
+                    FROM control_extintor_observaciones co
+                    INNER JOIN nomenclatura n ON n.id = co.nomenclatura_id
+                    WHERE co.control_extintor_id = cec.id
+                ) as observaciones")
+            ])
+            ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->where(function($main) use ($fechaRevision, $fechaRecarga) {
+                if ($fechaRevision) {
+                    [$y, $m] = explode('-', substr($fechaRevision, 0, 7));
+                    $main->where(function($rev) use ($y, $m) {
+                        $rev->whereYear('cec.fecha_revision',  $y)
+                            ->whereMonth('cec.fecha_revision', $m)
+                            ->whereExists(function($q) {
+                                $q->select(DB::raw(1))
+                                ->from('control_extintor_observaciones as co')
+                                ->join('nomenclatura as n', 'n.id', '=', 'co.nomenclatura_id')
+                                ->whereColumn('co.control_extintor_id', 'cec.id')
+                                ->where('n.id_tipo', 6)
+                                ->whereIn('n.abreviatura', [
+                                    'E.C.', 'E.U.', 'SO.P.', 'S.P.', 'P.P.'
+                                ]);
+                            });
+                    });
+                }
+
+                if ($fechaRecarga) {
+                    [$y2, $m2] = explode('-', substr($fechaRecarga, 0, 7));
+                    $main->orWhere(function($rec) use ($y2, $m2) {
+                        $rec->whereYear('cec.fecha_prox_recarga',  $y2)
+                            ->whereMonth('cec.fecha_prox_recarga', $m2);
+                    });
+                }
+            })
+
+            ->orderByDesc('cec.id')
+            ->get();
+
+    }
+
+    /**
+     * Devuelve las “Otras Novedades” (nomenclatura.descripcion + count)
+     * para el mes/año de fecha_revision y las abreviaturas dadas.
+     */
+    public function getOtrasNovedades(int $idClienteLocalidad, string $fechaRevision)
+    {
+        [$year, $month] = explode('-', substr($fechaRevision, 0, 7));
+
+        return DB::table('control_extintor_cli as cec')
+            ->join('control_extintor_observaciones as co', 
+                   'co.control_extintor_id', '=', 'cec.id')
+            ->join('nomenclatura as n', 
+                   'n.id', '=', 'co.nomenclatura_id')
+            ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->whereYear('cec.fecha_revision',  $year)
+            ->whereMonth('cec.fecha_revision', $month)
+            ->where('n.id_tipo', 6)
+            ->whereIn('n.abreviatura', [
+                'E.T.', 'S.R.', 'A.C.I.', 'E.N.E.', 
+                'U.N.E.', 'OBS',  'E.O.',  'A.V.',  'F.I.E.'
+            ])
+            ->select([
+                'n.descripcion',
+                DB::raw('COUNT(*) as cantidad')
+            ])
+            ->groupBy('n.descripcion')
+            ->orderByDesc('cantidad')
+            ->get();
+    }
+
+    /**
+     * Devuelve la lista de “Accesorios Extintores” (abreviatura + descripción + count)
+     * para el mes/año de fecha_revision y las abreviaturas dadas.
+     */
+    public function getAccesoriosExtintores(int $idClienteLocalidad, string $fechaRevision)
+    {
+        [$year, $month] = explode('-', substr($fechaRevision, 0, 7));
+
+        return DB::table('control_extintor_cli as cec')
+            ->join('control_extintor_observaciones as co', 'co.control_extintor_id', '=', 'cec.id')
+            ->join('nomenclatura as n',                    'n.id',                '=', 'co.nomenclatura_id')
+            ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->whereYear('cec.fecha_revision',  $year)
+            ->whereMonth('cec.fecha_revision', $month)
+            ->where('n.id_tipo', 6)
+            ->whereIn('n.abreviatura', [
+                'C.D.', 'M.D.', 'F.A.', 'M.A.',
+                'F.S.', 'C.S.', 'S.S.', 'C.E.', 'S.E.'
+            ])
+            ->select([
+                'n.abreviatura',
+                'n.descripcion',
+                DB::raw('COUNT(*) as cantidad')
+            ])
+            ->groupBy('n.abreviatura','n.descripcion')
+            ->orderByDesc('cantidad')
+            ->get();
+    }
+
+    /**
+     * Devuelve las “Novedades de Gabinete”
+     * para el mes/año de fecha_revision y las abreviaturas dadas.
+     */
+    public function getNovedadesGabinete(int $idClienteLocalidad, string $fechaRevision)
+    {
+        // Extraemos año y mes de "YYYY‑MM‑01" o "YYYY‑MM"
+        [$year, $month] = explode('-', substr($fechaRevision, 0, 7));
+
+        return DB::table('control_extintor_cli as cec')
+            ->join('control_extintor_observaciones as co', 
+                   'co.control_extintor_id', '=', 'cec.id')
+            ->join('nomenclatura as n', 
+                   'n.id',                '=', 'co.nomenclatura_id')
+            ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->whereYear('cec.fecha_revision',  $year)
+            ->whereMonth('cec.fecha_revision', $month)
+            ->where('n.id_tipo', 6)  // asumimos mismo tipo
+            ->whereIn('n.abreviatura', [
+                'F.V.', 'V.R.', 'F.CH.', 'CH.D.', 'P.G.', 'G.A.'
+            ])
+            ->select([
+                'n.abreviatura',
+                'n.descripcion',
+                DB::raw('COUNT(*) as cantidad')
+            ])
+            ->groupBy('n.abreviatura','n.descripcion')
+            ->orderByDesc('cantidad')
+            ->get();
+    }
+
+    /**
+     * Devuelve el conteo de nomenclaturas bajo estas reglas:
+     *   (id_tipo = 5  AND abreviatura = 'C.L.')
+     * OR      (          abreviatura = 'P.')
+     * OR      (id_tipo = 16 AND abreviatura = 'F.')
+     * Para el mes/año de fecha_revision.
+     */
+    public function getNovedadesEspeciales(int $idClienteLocalidad, string $fechaRevision)
+    {
+        [$year, $month] = explode('-', substr($fechaRevision, 0, 7));
+
+        return DB::table('control_extintor_cli as cec')
+            ->join('nomenclatura as n', function ($join) {
+                $join->on('n.id', '=', 'cec.area_seguridad')
+                    ->orOn('n.id', '=', 'cec.instructivo_uso')
+                    ->orOn('n.id', '=', 'cec.instructivo_clasificacion')
+                    ->orOn('n.id', '=', 'cec.flecha_ubicacion')
+                    ->orOn('n.id', '=', 'cec.silueta')
+                    ->orOn('n.id', '=', 'cec.rectangulo_instalacion');
+            })
+            ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->whereYear('cec.fecha_revision', $year)
+            ->whereMonth('cec.fecha_revision', $month)
+            ->where(function($q) {
+                $q->where(function($sub) {
+                    $sub->where('n.id_tipo', 5)
+                        ->where('n.abreviatura', 'C.L.');
+                })
+                ->orWhere(function($sub) {
+                    $sub->where('n.id_tipo', 15)
+                        ->where('n.abreviatura', 'P.');
+                })
+                ->orWhere(function($sub) {
+                    $sub->where('n.id_tipo', 16)
+                        ->where('n.abreviatura', 'F.');
+                });
+            })
+            ->select([
+                'n.abreviatura',
+                'n.descripcion',
+                DB::raw('COUNT(*) as cantidad')
+            ])
+            ->groupBy('n.abreviatura', 'n.descripcion')
+            ->orderByDesc('cantidad')
+            ->get();
+    }
+
 }

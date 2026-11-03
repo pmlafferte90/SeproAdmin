@@ -1,7 +1,23 @@
+   function validarEmailsMultiples(inputId) {
+    const input = document.getElementById(inputId);
+    const emails = input.value.split(',').map(e => e.trim()).filter(e => e !== '');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (emails.length === 0) return false;
+    return emails.every(email => emailRegex.test(email));
+  }
+
+
 
 // Exportar la función globalmente
 window.enviarFormularioRepresentante = async function enviarFormularioRepresentante() {
     const form = document.getElementById('representanteForm');
+
+    /*if (!validarEmailsMultiples('email')) {
+      showToast('Por favor, ingresa uno o más correos válidos separados por coma.', 'error');
+      return;
+    } */
+
     const formData = new FormData(form);
     const representanteId = formData.get('representanteId');
     const url = representanteId
@@ -38,7 +54,13 @@ window.enviarFormularioRepresentante = async function enviarFormularioRepresenta
         document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
         location.reload();
       } else {
-        showToast(jsonData.error || 'Error al guardar el representante', 'error');
+        // Verificamos si hay errores específicos
+        if (jsonData.errors) {
+        const allErrors = Object.values(jsonData.errors).flat();
+        allErrors.forEach(msg => showToast(msg, 'error'));
+        } else {
+            showToast(jsonData.error || 'Error al guardar el representante', 'error');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -90,7 +112,24 @@ window.editarRepresentante = function (id_representante) {
             $('#apellido').val(rep.apellido);
             $('#identificacion').val(rep.identificacion);
             $('#telefono').val(rep.telefono);
-            $('#correo').val(rep.correo);
+            //$('#email').val(rep.correo);
+            // **Emails con TomSelect**
+            const emailSelect = document.getElementById('emails');
+            const tsEmails   = emailSelect.tomselect;
+
+            // Limpiar tags existentes
+            tsEmails.clearOptions();
+            tsEmails.clear();
+
+            // Si la API devuelve un array rep.emails = [{ correo: 'a@x.com' }, ...]
+            if (Array.isArray(rep.emails)) {
+                // Agregar cada correo como opción y tag
+                rep.emails.forEach(e => {
+                  tsEmails.addOption({ value: e.email, text: e.email });
+                });
+                // Seleccionar todos los valores
+                tsEmails.setValue(rep.emails.map(e => e.email));
+            }
 
             showToast('Datos del representante cargados', 'success');
             new bootstrap.Modal(document.getElementById('representanteModal')).show();
@@ -141,8 +180,15 @@ window.nuevoRepresentante = function () {
   }
   localidadSelect.innerHTML = ''; // quitar opciones anteriores
 
+  const emailSelect = document.getElementById('emails');
+  const tsEmails   = emailSelect.tomselect;
+
+  // Limpiar tags existentes
+  tsEmails.clearOptions();
+  tsEmails.clear();
+
   // Inicializar vacío
-  new TomSelect(localidadSelect, {
+  const newLocalidades = new TomSelect(localidadSelect, {
     placeholder: 'Seleccione una o más localidades',
     options: [],
     items: [],
@@ -152,6 +198,9 @@ window.nuevoRepresentante = function () {
       item: (data, escape) => `<div>${escape(data.text)}</div>`
     }
   });
+
+  newLocalidades.enable();
+
 
   // Eliminar estilos visuales grises
   const wrapper = localidadSelect.tomselect.wrapper;
@@ -275,7 +324,7 @@ function inicializarGeneradorUsername() {
   const apellidoInput = document.getElementById('apellido');
   const usuarioInput = document.getElementById('usuario');
 
-  async function generarUsername() {
+  /*async function generarUsername() {
     const nombre = nombreInput.value.trim().toLowerCase();
     const apellido = apellidoInput.value.trim().toLowerCase();
 
@@ -296,12 +345,27 @@ function inicializarGeneradorUsername() {
         usuarioInput.value = baseUsername;
       }
     }
-  }
+  } */
 
-  if (nombreInput && apellidoInput && usuarioInput) {
-    nombreInput.addEventListener('blur', generarUsername);
-    apellidoInput.addEventListener('blur', generarUsername);
-  }
+  nombreInput.addEventListener('blur', () => {
+      const nombre = nombreInput.value.trim();
+      const apellido = apellidoInput.value.trim();
+      const usuarioInput = document.getElementById('usuario');
+
+      if (nombre && apellido && usuarioInput) {
+        window.generarUsername(nombre, apellido, usuarioInput);
+      }
+    });
+
+    apellidoInput.addEventListener('blur', () => {
+      const nombre = nombreInput.value.trim();
+      const apellido = apellidoInput.value.trim();
+      const usuarioInput = document.getElementById('usuario');
+
+      if (nombre && apellido && usuarioInput) {
+        window.generarUsername(nombre, apellido, usuarioInput);
+      }
+    });
 }
 
 function inicializarSelectVacioLocalidad() {
@@ -323,6 +387,21 @@ function inicializarSelectVacioLocalidad() {
 
 document.addEventListener('DOMContentLoaded', () => {
     inicializarSelectVacioLocalidad();
+
+    new TomSelect('#emails', {
+      plugins: ['remove_button'],
+      persist: false,
+      createOnBlur: true,
+      create: function(input) {
+        // valida formato básico de correo
+        const emailRegex = /^\S+@\S+\.\S+$/;
+        if (!emailRegex.test(input)) {
+          window.showToast(`Formato de correo inválido: ${input}`, 'error');
+          return false;  // evita crear el tag
+        }
+        return { value: input, text: input };
+      }
+    });
 });
 
 document.getElementById('ver_todas_localidades').addEventListener('change', function () {

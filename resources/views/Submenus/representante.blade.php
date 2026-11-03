@@ -1,78 +1,100 @@
 @extends('layouts.app')
+
 @section('content')
 @include('modales.representanteform')
 
 <div class="mt-4 bg-white p-4 rounded shadow-sm">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="h5 font-weight-bold">Representantes</h2>
-        <button class="btn btn-danger text-white" onclick="nuevoRepresentante()">+ NUEVO REPRESENTANTE</button>
+    <div class="table-responsive" style="overflow-x: auto; width: 100%;">
+        @section('tabla-extra-content')
+            <form
+                action="{{ route('representante.import') }}"
+                method="POST"
+                enctype="multipart/form-data"
+                class="d-flex align-items-center"
+            >
+                @csrf
+
+                <div class="me-2">
+                    <label for="archivo" class="form-label visually-hidden">Archivo</label>
+                    <input
+                        type="file"
+                        name="archivo"
+                        id="archivo"
+                        accept=".csv,.txt,.xlsx"
+                        class="form-control form-control-sm"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-sm btn-primary">
+                    Importar
+                </button>
+            </form>
+        @endsection
+
+        @section('tabla-create-button')
+            <button class='btn btn-sm btn-danger text-white' style='font-size: 13px;' onclick='nuevoRepresentante()'>
+                + NUEVO REPRESENTANTE
+            </button>
+        @endsection
+
+        <x-table
+            :headers="[
+                ['key' => 'empresa',         'label' => 'EMPRESA'],
+                ['key' => 'localidades',     'label' => 'LOCALIDADES'],
+                ['key' => 'nombre',          'label' => 'NOMBRE'],
+                ['key' => 'apellido',        'label' => 'APELLIDO'],
+                ['key' => 'usuario',         'label' => 'USUARIO'],
+                ['key' => 'identificacion',  'label' => 'IDENTIFICACIÓN'],
+                ['key' => 'telefono',        'label' => 'TELÉFONO'],
+                ['key' => 'email',           'label' => 'EMAIL'],
+                ['key' => 'estado',          'label' => 'ESTADO'],
+                [
+                    'key'   => 'acciones',
+                    'label' => 'ACCIÓN',
+                    'class' => 'sticky-col bg-white border-start',
+                    'style' => 'z-index:5;box-shadow:-4px 0 6px -2px rgba(0,0,0,0.2);'
+                ],
+            ]"
+
+            :rows="$representantes->map(function($r) {
+                return [
+                    $r->razon_social,
+                    $r->ver_todas_localidades
+                        ? '<span class=\'badge bg-primary fs-6\'>Todas</span>'
+                        : e($r->localidades->pluck('nombre')->implode(', ')),
+                    e($r->nombre),
+                    e($r->apellido),
+                    e($r->usuario->usuario ?? 'Sin usuario'),
+                    e($r->identificacion),
+                    e($r->telefono),
+                    e($r->correo),
+                    '<span class=\'badge fs-6 ' . ($r->estado == 1 ? 'bg-success' : 'bg-danger') . '\'>' . ($r->estado == 1 ? 'Activo' : 'Inactivo') . '</span>',
+                    view('components.actions', [
+                        'actions' => array_filter([
+                            [
+                                'class'   => 'btn-editar btn-sm' . ($r->estado == 0 ? ' disabled' : ''),
+                                'title'   => 'Editar',
+                                'icon'    => 'fas fa-pen',
+                                'onclick' => $r->estado == 1 ? 'editarRepresentante(\'' . $r->id . '\')' : ''
+                            ],
+                            [
+                                'class'   => 'btn-sm ' . ($r->estado == 1 ? 'btn-eliminar' : 'btn-success'),
+                                'title'   => $r->estado == 1 ? 'Eliminar' : 'Restaurar',
+                                'icon'    => $r->estado == 1 ? 'fas fa-trash' : 'fas fa-undo',
+                                'onclick' => 'cambiarEstadoRepresentante(\'' . $r->id . '\', \'' . $r->estado . '\')'
+                            ],
+                        ])
+                    ])->render()
+                ];
+            })->toArray()"
+
+            :paginator="$representantes"
+            titulo='Representantes'
+            subtitulo=''
+        ></x-table>
+
     </div>
-
-    
-    @include('componentes.buscador', ['actionRoute' => route('representante.index')])
-
-    <div class="table-responsive" style="overflow-x: auto;">
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>EMPRESA</th>
-                    <th>LOCALIDADES</th>
-                    <th>NOMBRE</th>
-                    <th>APELLIDO</th>
-                    <th>IDENTIFICACIÓN</th>
-                    <th>TELÉFONO</th>
-                    <th>EMAIL</th>
-                    <th>ESTADO</th>
-                    <th width="15%">ACCIÓN</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($representantes as $representante)
-                <tr>
-                    <td>{{ $representante->razon_social }}</td>
-                    <td>
-                        @if($representante->ver_todas_localidades)
-                            <span class="badge bg-primary fs-6">Todas</span>
-                        @else
-                            {{ $representante->localidades->pluck('nombre')->implode(', ') }}
-                        @endif
-                    </td>
-                    <td>{{ $representante->nombre }}</td>
-                    <td>{{ $representante->apellido }}</td>
-                    <td>{{ $representante->identificacion }}</td>
-                    <td>{{ $representante->telefono }}</td>
-                    <td>{{ $representante->correo }}</td>
-                    <td>
-                        <span class="badge fs-6 {{ $representante->estado == 1 ? 'bg-success' : 'bg-danger' }}">
-                            {{ $representante->estado == 1 ? 'Activo' : 'Inactivo' }}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-editar btn-sm {{ $representante->estado == 0 ? 'disabled' : '' }}" 
-                                    title="Editar" 
-                                    onclick="editarRepresentante('{{ $representante->id }}')">
-                                <i class="fas fa-pen"></i>
-                            </button>
-
-                            <button class="btn btn-sm {{ $representante->estado == 1 ? 'btn-eliminar' : 'btn-success' }}" 
-                                    title="{{ $representante->estado == 1 ? 'Eliminar' : 'Restaurar' }}" 
-                                    onclick="cambiarEstadoRepresentante('{{ $representante->id }}', '{{ $representante->estado }}')">
-                                <i class="fas {{ $representante->estado == 1 ? 'fa-trash' : 'fa-undo' }}"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="9" class="text-center">No hay representantes disponibles.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-    @include('componentes.pagination', ['items' => $representantes])
-
 </div>
 @endsection
 

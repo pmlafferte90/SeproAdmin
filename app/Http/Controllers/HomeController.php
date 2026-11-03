@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CiUser;
 use App\Models\Cliente;
+use App\Models\ClienteLocalidad;
 use App\Models\ControlExtintorCli;
 use App\Models\Menu;
 use App\Services\ExtintorService;
@@ -80,13 +81,16 @@ class HomeController extends Controller
      // Convierte la colección en un array
         
 
+        $localidades = ClienteLocalidad::where('estado',1)->get();
+
         // Retornar la vista con los menús, el conteo de usuarios y clientes activos
         return view('home', [
             'menus' => $menus,
             "empresa" => $empresa,
             'usuariosActivos' => $usuariosActivos,
             'clientesActivos' => $clientesActivos,
-            'recarga' => $recarga
+            'recarga' => $recarga,
+            'localidades' => $localidades
         ]);
         // return view('home');
     }

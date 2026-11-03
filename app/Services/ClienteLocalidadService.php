@@ -133,6 +133,7 @@ class ClienteLocalidadService
 
             $localidades = ClienteLocalidad::where("id_cliente", $id_cliente)
             ->where('estado',1)
+            ->orderBy('nombre', 'asc')
             ->get();
 
             return response()->json([

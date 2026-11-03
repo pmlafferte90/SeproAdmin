@@ -15,12 +15,17 @@
           <div class="row">
             <div class="col-6 mb-3">
               <label for="cliente" class="form-label"><strong>Seleccione un Cliente</strong></label>
-              <select name="cliente" id="cliente" class="form-control shadow-sm" required>
+              {{-- <select name="cliente" id="cliente" class="form-control shadow-sm" required>
                 <option value="" disabled selected>Seleccione un cliente</option>
                 @foreach ($clientes as $cliente)
                     <option value="{{ $cliente->id }}">{{ $cliente->razon_social }}</option>
                 @endforeach
+              </select> --}}
+
+              <select name="cliente" id="cliente" class="form-control shadow-sm" required>
+                <option value="" disabled selected>Seleccione un cliente</option>
               </select>
+
             </div>
 
             <div class="col-6 mb-3">
@@ -30,30 +35,6 @@
               </select>
             </div>
           </div>
-
-          <!-- <div class="row">
-            📌 Sección Derecha: Áreas y Sub-áreas
-            <div class="col-md-12">
-              <div class="mb-3">
-                  <label for="subareas_select" class="form-label">
-                      <strong>Seleccione las Sub-áreas</strong>
-                  </label>
-                  <select id="subareas_select" name="subareas[]" multiple class="form-control shadow-sm" required>
-                    @foreach($areas as $area)
-                      @if($area->subareas->isNotEmpty())
-                        <optgroup label="{{ $area->nombre }}">
-                          @foreach($area->subareas as $subarea)
-                            <option value="{{ $subarea->id }}" data-area="{{ $area->nombre }}">
-                              {{ $area->nombre }} - {{ $subarea->nombre }}
-                            </option>
-                          @endforeach
-                        </optgroup>
-                      @endif
-                    @endforeach
-                  </select>
-              </div>
-            </div>
-          </div> -->
 
           <div id="contenedorSubareas" class="mt-4" style="display: none;">
           <div class="row">
@@ -89,14 +70,20 @@
   </div>
 </div>
 
+{{-- @php
+$subareasRaw = $areas->flatMap(function ($area) {
+        // Usa la propiedad subAreas (eager‐loaded), nunca subareas()
+        return $area->subAreas->map(function ($sub) use ($area) {
+            return [
+                'id'     => $sub->id,
+                'text'   => $sub->nombre,
+                'codigo' => $sub->codigo,
+                'area'   => $area->nombre,
+            ];
+        });
+    });
+@endphp
+
 <script>
-    window.subareasRaw = @json(
-        $areas->flatMap(fn($area) =>
-            $area->subareas->map(fn($sub) => [
-                'id' => $sub->id,
-                'text' => $sub->nombre,
-                'area' => $area->nombre
-            ])
-        )
-    );
-</script>
+    window.subareasRaw = @json($subareasRaw);
+</script> --}}

@@ -52,11 +52,22 @@
               inputmode="numeric" pattern="[0-9]{10}" title="El teléfono debe contener 10 dígitos."
               oninput="this.value = this.value.replace(/[^0-9]/g, '');">
           </div>
-          <div class="mb-3">
+          <!--div class="mb-3">
             <label for="correo" class="form-label">Correo</label>
-            <input type="email" class="form-control shadow-sm" id="correo" name="correo" required
-              title="Ingrese un correo electrónico válido.">
-          </div>
+            <input type="text" class="form-control shadow-sm" id="email" name="email" required
+              placeholder="ej: correo1@ejemplo.com, correo2@ejemplo.com"
+              title="Ingrese uno o más correos electrónicos separados por coma.">
+          </div-->
+          <div class="mb-3">
+              <label for="emails" class="form-label">Correos</label>
+              <select
+                id="emails"
+                name="emails[]"
+                multiple
+                class="form-control shadow-sm"
+                placeholder="Escribe un correo y presiona Enter"
+              ></select>
+            </div>
           <div class="mb-3" id="usuario_div">
             <label for="usuario" class="form-label">Nombre de Usuario</label>
             <input

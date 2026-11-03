@@ -5,7 +5,7 @@
     <select name="{{ $name }}[]" id="{{ $name }}" multiple class="form-select shadow-sm tom-select" data-tipo="{{ $tipoFiltro }}">
         @foreach($nomenclaturas as $tipo)
             @if($tipo->descripcion === $tipoFiltro)
-                <optgroup label="{{ $tipo->descripcion }}">
+                <optgroup>
                     @foreach($tipo->nomenclaturas as $nomenclatura)
                         <option value="{{ $nomenclatura->id }}">{{ $nomenclatura->descripcion }}</option>
                     @endforeach

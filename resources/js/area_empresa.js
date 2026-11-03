@@ -1,4 +1,5 @@
-let todasLasSubareas = window.subareasRaw || [];
+//let todasLasSubareas = window.subareasRaw || [];
+let todasLasSubareas = [];
 let subareasSeleccionadas = [];
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -15,7 +16,13 @@ document.addEventListener("DOMContentLoaded", function() {
         // Agrupar disponibles por área
         const disponiblesAgrupadas = {};
         todasLasSubareas.forEach(sub => {
-            if (!subareasSeleccionadas.includes(sub.id.toString()) && sub.text.toLowerCase().includes(buscarDisponibles)) {
+            if (
+                !subareasSeleccionadas.includes(sub.id.toString()) &&
+                (
+                    sub.text.toLowerCase().includes(buscarDisponibles) ||
+                    (sub.codigo && sub.codigo.toLowerCase().includes(buscarDisponibles))
+                )
+                ){
                 if (!disponiblesAgrupadas[sub.area]) disponiblesAgrupadas[sub.area] = [];
                 disponiblesAgrupadas[sub.area].push(sub);
             }
@@ -27,19 +34,21 @@ document.addEventListener("DOMContentLoaded", function() {
             header.textContent = area;
             disponiblesUl.appendChild(header);
 
-            disponiblesAgrupadas[area].forEach(sub => {
-                const li = document.createElement("li");
-                li.className = "list-group-item d-flex justify-content-between align-items-center";
-                li.innerHTML = `<div>${sub.text}</div>
-                                <button class="btn btn-sm btn-sepro">
-                                    <i class="bi bi-plus"></i>
-                                </button>`;
-                li.querySelector("button").addEventListener("click", () => {
-                    subareasSeleccionadas.push(sub.id.toString());
-                    renderSubareas();
+            disponiblesAgrupadas[area]
+                .sort((a, b) => a.text.localeCompare(b.text))
+                .forEach(sub => {
+                    const li = document.createElement("li");
+                    li.className = "list-group-item d-flex justify-content-between align-items-center";
+                    li.innerHTML = `<div>${sub.text}</div>
+                                    <button class="btn btn-sm btn-sepro">
+                                        <i class="bi bi-plus"></i>
+                                    </button>`;
+                    li.querySelector("button").addEventListener("click", () => {
+                        subareasSeleccionadas.push(sub.id.toString());
+                        renderSubareas();
+                    });
+                    disponiblesUl.appendChild(li);
                 });
-                disponiblesUl.appendChild(li);
-            });
         }
 
         // Agrupar seleccionadas por área
@@ -57,54 +66,26 @@ document.addEventListener("DOMContentLoaded", function() {
             header.textContent = area;
             seleccionadasUl.appendChild(header);
 
-            seleccionadasAgrupadas[area].forEach(sub => {
-                const li = document.createElement("li");
-                li.className = "list-group-item d-flex justify-content-between align-items-center";
-                li.innerHTML = `<div>${sub.text}</div>
-                                <button class="btn btn-sm btn-danger">
-                                    <i class="bi bi-x"></i>
-                                </button>`;
-                li.querySelector("button").addEventListener("click", () => {
-                    subareasSeleccionadas = subareasSeleccionadas.filter(x => x !== sub.id.toString());
-                    renderSubareas();
+            seleccionadasAgrupadas[area]
+                .sort((a, b) => a.text.localeCompare(b.text))
+                .forEach(sub => {
+                    const li = document.createElement("li");
+                    li.className = "list-group-item d-flex justify-content-between align-items-center";
+                    li.innerHTML = `<div>${sub.text}</div>
+                                    <button class="btn btn-sm btn-danger">
+                                        <i class="bi bi-x"></i>
+                                    </button>`;
+                    li.querySelector("button").addEventListener("click", () => {
+                        subareasSeleccionadas = subareasSeleccionadas.filter(x => x !== sub.id.toString());
+                        renderSubareas();
+                    });
+                    seleccionadasUl.appendChild(li);
                 });
-                seleccionadasUl.appendChild(li);
-            });
         }
 
         // Actualizar input oculto
         document.getElementById("inputSubareas").value = JSON.stringify(subareasSeleccionadas);
     }
-
-
-    // const subareasSelect = document.getElementById('subareas_select');
-    // if (subareasSelect) {
-    //     new TomSelect(subareasSelect, {
-    //         placeholder: 'Buscar y Seleccionar Sub-Áreas',
-    //         plugins: ['remove_button'],
-    //         maxItems: null,
-    //         searchField: ['text'],
-    //         render: {
-    //             option: function(data, escape) {
-    //                 // Formato: Área en negrita, luego guion y subárea
-    //                 let area = escape(data.customProperties?.area || '');
-    //                 let label = escape(data.text.replace(area + ' - ', ''));
-    //                 return `<div><strong>${area}</strong> - ${label}</div>`;
-    //             },
-    //             item: function(data, escape) {
-    //                 return `<div>${escape(data.text)}</div>`;
-    //             },
-    //             optgroup_header: function(data, escape) {
-    //                 return `<div class="optgroup-header">${escape(data.label)}</div>`;
-    //             }
-    //         },
-    //         // Fijar el buscador arriba incluso con muchos seleccionados
-    //         dropdownInput: '<input type="text" autocomplete="off" class="ts-input" placeholder="Buscar...">'
-    //     });
-    // }
-
-    // document.getElementById("cliente").addEventListener("change", checkUnlockTomSelect);
-    // document.getElementById("localidad").addEventListener("change", checkUnlockTomSelect);
 
     renderSubareas();
 
@@ -189,7 +170,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // }
 
     // Función para mostrar el formulario para asignar subareas
-    window.nuevoAreaEmpresa = function () {
+    /*window.nuevoAreaEmpresa = function () {
         const form = document.getElementById("areaEmpresaForm");
         form.reset();
 
@@ -211,8 +192,57 @@ document.addEventListener("DOMContentLoaded", function() {
         // Mostrar el modal
         const modal = new bootstrap.Modal(document.getElementById("areaEmpresaModal"));
         modal.show();
-    };
+    };*/
 
+    window.nuevoAreaEmpresa = async function () {
+        const form = document.getElementById("areaEmpresaForm");
+        form.reset();
+
+        // Limpiar selects y listas
+        document.getElementById("cliente").innerHTML = '<option value="" disabled selected>Seleccione un cliente</option>';
+        document.getElementById("localidad").innerHTML = '<option value="" disabled selected>Seleccione una localidad</option>';
+        document.getElementById("listaDisponibles").innerHTML = '';
+        document.getElementById("listaSeleccionadas").innerHTML = '';
+        document.getElementById("inputSubareas").value = '';
+        document.getElementById("contenedorSubareas").style.display = "none";
+
+        if (window.tomSubareas) {
+            window.tomSubareas.clear();
+            window.tomSubareas.destroy();
+            window.tomSubareas = null;
+        }
+
+        showLoading();
+
+        try {
+            const responseClientes = await fetch('/api/clientes_activos');
+            const resultClientes = await responseClientes.json();
+
+            const clienteSelect = document.getElementById("cliente");
+            resultClientes.data.forEach(cliente => {
+                const option = document.createElement("option");
+                option.value = cliente.id;
+                option.textContent = cliente.razon_social;
+                clienteSelect.appendChild(option);
+            });
+
+            const responseSubareas = await fetch('/api/subareas_activas');
+            const resultSubareas = await responseSubareas.json();
+
+            todasLasSubareas = resultSubareas.data || [];
+            subareasSeleccionadas = [];
+
+            renderSubareas();
+
+            const modal = new bootstrap.Modal(document.getElementById("areaEmpresaModal"));
+            modal.show();
+        } catch (error) {
+            console.error('❌ Error al cargar datos del formulario:', error);
+            showToast('Error al cargar los datos del formulario.', 'error');
+        } finally {
+            hideLoading();
+        }
+    };
 
     // Función para enviar formulario
     window.enviarFormularioAreaEmpresa = function () {

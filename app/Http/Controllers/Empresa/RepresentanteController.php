@@ -3,22 +3,24 @@
 namespace App\Http\Controllers\Empresa;
 
 use App\Http\Controllers\Controller;
-use App\Models\CiUser;
+use App\Imports\RepresentantesImport;
 use App\Models\Cliente;
 use App\Models\Representante;
 use App\Services\RepresentanteService;
 use App\Services\UsuarioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Excel as ExcelType;
+use Spatie\Permission\Models\Role;
 
 class RepresentanteController extends Controller
 {
-    protected $UsuarioService, $representanteService;
-    public function __construct()
+
+    public function __construct(private UsuarioService $UsuarioService, private RepresentanteService $representanteService)
     {
-        $this->UsuarioService = new UsuarioService;
-        $this->representanteService = new RepresentanteService;
+
     }
 
     public function index(Request $request)
@@ -33,17 +35,18 @@ class RepresentanteController extends Controller
         DB::beginTransaction();
 
         try {
+
+            // Buscar dinámicamente el rol 'Cliente' usando Spatie
+            $rolCliente = Role::where('name', 'Cliente')->firstOrFail();
+            
             // Llamar al servicio para crear el usuario
-            $request->merge(['rol' => 4]);
-            $responseUsuario = $this->UsuarioService->crearUsuario($request);
-            $usuarioData = json_decode($responseUsuario->getContent(), true);
+            $request->merge(['rol_id' => $rolCliente->id]);
+            $correos = $request->input('emails');
+            $correoPrincipal = $correos[0] ?? null;
+            $request->merge(['email' => $correoPrincipal]); // Asegurarse de que el correo esté en el request
+            $usuario = $this->UsuarioService->crearUsuario($request);
 
-            if (!$usuarioData['ok']) {
-                throw new \Exception($usuarioData['error']);
-            }
-
-            $usuario = $usuarioData['data'];
-            $id_user = $usuario['id']; // ID del usuario creado
+            $id_user = $usuario->id; // ID del usuario creado
 
             // Llamar al servicio para crear el representante
             $responseRepresentante = $this->representanteService->crearRepresentante($request, $id_user);
@@ -53,7 +56,6 @@ class RepresentanteController extends Controller
                 throw new \Exception($representanteData['error']);
             }
 
-            // Si todo es correcto, confirmar la transacción
             DB::commit();
 
             return response()->json([
@@ -64,14 +66,20 @@ class RepresentanteController extends Controller
                     'representante' => $representanteData['data'],
                 ],
             ], 201);
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'errors'  => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             // Si ocurre un error, deshacer la transacción
             DB::rollBack();
-
             return response()->json([
                 'ok' => false,
                 'message' => 'Ocurrió un error al crear el representante',
-                'error' => $e->getMessage(),
+                'errors' => [$e->getMessage()],
             ], 500);
         }
     }
@@ -138,6 +146,37 @@ class RepresentanteController extends Controller
         }catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         } 
+    }
+
+    public function handleImport(Request $request, RepresentantesImport $importer)
+    {
+        // 2.1 Validación
+        $request->validate([
+            'archivo' => 'required|file|mimes:csv,txt,xlsx',
+        ]);
+
+        // 2.2 Guarda el archivo en storage/app/imports
+        $path = $request->file('archivo')->store('imports');
+
+        try {
+            // 2.3 Ejecuta la importación
+            Excel::import(
+                $importer,
+                $path,
+                'local',               // disco 'local' → storage/app
+                ExcelType::XLSX             // si es XLSX: Excel::XLSX
+            );
+
+            return redirect()
+                ->back()
+                ->with('success', '¡Importación completada exitosamente!');
+
+        } catch (\Exception $e) {
+            // 2.4 Manejo de errores
+            return redirect()
+                ->back()
+                ->withErrors("Error al importar: " . $e->getMessage());
+        }
     }
 
 

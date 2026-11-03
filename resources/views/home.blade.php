@@ -9,5 +9,9 @@
 @endsection
 
 @section('content')
-    @include('dashboard')
+    @include('new-dashboard')
 @endsection
+
+@push('after-scripts')
+    @vite('resources/js/dashboard.js')
+@endpush

@@ -1,4 +1,11 @@
-<div class="modal fade" id="controlExtintorModal" tabindex="-1" aria-labelledby="controlExtintorModalLabel" aria-hidden="true">
+<div class="modal fade"
+    id="controlExtintorModal"
+    tabindex="-1"
+    data-bs-focus="false"
+    aria-labelledby="controlExtintorModalLabel"
+    aria-hidden="true"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -129,7 +136,7 @@
                     </div>
                     <fieldset class="border p-3 rounded mb-3">
                         <div class="row mb-3 g-3">
-                            <div class="col-md-4 ">@include('componentes.select_nomenclatura', ['label' => 'Área de Seguridad', 'name' => 'area_seguridad', 'tipoFiltro' => 'AREA-SEGURIDAD'])</div>
+                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Área de Seguridad', 'name' => 'area_seguridad', 'tipoFiltro' => 'AREA-SEGURIDAD'])</div>
                             <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Instructivo de Uso', 'name' => 'instructivo', 'tipoFiltro' => 'USO-CLASIFICACION-FLECHA-SILUETA'])</div>
                             <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Instructivo de Clasificación', 'name' => 'instructivo_clasificacion', 'tipoFiltro' => 'USO-CLASIFICACION-FLECHA-SILUETA'])</div>
                         </div>
@@ -178,7 +185,7 @@
                                         <input type="file" class="form-control shadow-sm" id="imagen" name="imagen" accept="image/*">
                                     </div>
                                     <div class="col-md-12">
-                                        <label for="observaciones" class="form-label fw-bold mb-1">Observaciones internas:</label>
+                                        <label for="observaciones" class="form-label fw-bold mb-1">Novedades:</label>
                                         <input type="text" class="form-control shadow-sm" id="observaciones" name="observaciones">
                                     </div>
                                 </div> 

@@ -134,3 +134,28 @@ window.addEventListener('load', () => {
 });
 
 
+function generarUsername(nombre, apellido, usuarioInput) {
+    if (!nombre || !apellido) {
+    console.error("Nombre y apellido son requeridos para generar el username.");
+    return;
+    }
+  const baseUsername = `${nombre.charAt(0)}.${apellido}`.replace(/\s+/g, '').toLowerCase();
+
+  fetch(`/usuario/check/username?username=${encodeURIComponent(baseUsername)}`)
+    .then(res => res.json())
+    .then(json => {
+      if (json.success && json.username) {
+        usuarioInput.value = json.username;
+      } else {
+        usuarioInput.value = baseUsername;
+      }
+    })
+    .catch(error => {
+      console.error('Error verificando username:', error);
+      usuarioInput.value = baseUsername;
+    });
+}
+
+window.generarUsername = generarUsername;
+
+
