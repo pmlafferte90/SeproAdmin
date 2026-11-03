@@ -23,10 +23,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends git unzip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY composer.json composer.lock ./
-# gd/exif no existen en esta etapa (solo instala paquetes, no ejecuta la app);
+# gd/exif/zip no existen en esta etapa (solo instala paquetes, no ejecuta la app);
 # el runtime sí las compila
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction \
-    --ignore-platform-req=ext-gd --ignore-platform-req=ext-exif
+    --ignore-platform-req=ext-gd --ignore-platform-req=ext-exif --ignore-platform-req=ext-zip
 COPY . .
 RUN composer dump-autoload --optimize --no-dev
 
