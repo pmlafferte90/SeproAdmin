@@ -921,8 +921,8 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         // Botón que activó el modal
         const button = event.relatedTarget;
 
-        // Obtener la imagen en base64 y los datos adicionales
-        const imageBase64 = button.getAttribute('data-image');
+        // Obtener la URL de la imagen (en R2) y los datos adicionales
+        const imageUrl = button.getAttribute('data-image');
         const marca = button.getAttribute('data-marca'); // Asegúrate de tener este dato en el botón
         const fecha = button.getAttribute('data-fecha'); // Asegúrate de tener este dato en el botón
 
@@ -931,10 +931,10 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         modalTitle.textContent = `Control_extintor ${marca} - ${fecha}`;
 
         // Mostrar la imagen en el src del <img>
-        modalImage.src = `data:image/jpeg;base64,${imageBase64}`; // Ajustar MIME si es necesario
+        modalImage.src = imageUrl;
 
         // Configurar el enlace de descarga
-        downloadLink.href = `data:image/jpeg;base64,${imageBase64}`; // Ajustar MIME si es necesario
+        downloadLink.href = imageUrl;
         downloadLink.download = nombreArchivo;
     });
 

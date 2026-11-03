@@ -9,6 +9,7 @@ use App\Models\TamanoExtintor;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ExtintorService
 {
@@ -486,14 +487,12 @@ class ExtintorService
             $controlExtintor->id_usuario = $id_usuario;
 
             if (isset($data['imagen'])) {
-                // Leer el contenido del archivo
-                $imageContent = file_get_contents($data['imagen']->getRealPath());
-            
-                // Convertir el contenido a base64
-                $imageBase64 = base64_encode($imageContent);
-            
-                // Guardar la imagen en base64 en la base de datos
-                $controlExtintor->imagen_observacion = $imageBase64;
+                // Subir la imagen a R2 (almacenamiento de objetos) y guardar solo la ruta
+                $file = $data['imagen'];
+                $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+                $key = 'extintores/' . uniqid('', true) . '.' . $ext;
+                Storage::disk('s3')->put($key, file_get_contents($file->getRealPath()));
+                $controlExtintor->imagen_observacion = $key;
             }
             $controlExtintor->save();
 
@@ -549,9 +548,13 @@ class ExtintorService
         $controlExtintor->observaciones = $input['observaciones'] ?: null;
         $controlExtintor->fecha_actualizacion = now();
     
-        // Si se sube una nueva imagen, la convierte a base64, de lo contrario, mantiene la actual
+        // Si se sube una nueva imagen, la sube a R2 y guarda la ruta; si no, mantiene la actual
         if (!empty($input['imagen'])) {
-            $controlExtintor->imagen_observacion = base64_encode(file_get_contents($input['imagen']->getRealPath()));
+            $file = $input['imagen'];
+            $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+            $key = 'extintores/' . uniqid('', true) . '.' . $ext;
+            Storage::disk('s3')->put($key, file_get_contents($file->getRealPath()));
+            $controlExtintor->imagen_observacion = $key;
         }
     
         $controlExtintor->save();

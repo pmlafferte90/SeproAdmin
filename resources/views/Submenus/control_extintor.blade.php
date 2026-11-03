@@ -138,7 +138,7 @@
                                 <button class="btn btn-sm btn-success"
                                     data-bs-toggle="modal"
                                     data-bs-target="#imageModal"
-                                    data-image="{{ $controlExtintor->imagen_observacion }}"
+                                    data-image="{{ $controlExtintor->imagen_observacion ? Storage::disk('s3')->url($controlExtintor->imagen_observacion) : '' }}"
                                     data-marca="{{ $controlExtintor->marca }}"
                                     data-fecha="{{ $controlExtintor->fecha_ingreso }}"
                                     title="Visualizar Imagen">
