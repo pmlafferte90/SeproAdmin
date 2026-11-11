@@ -27,7 +27,8 @@ class RouteServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         $this->routes(function () {
-            Route::middleware('api')
+            // Las rutas /api solo las consume el propio frontend con sesion: requieren login
+            Route::middleware(['web', 'auth'])
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
