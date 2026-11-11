@@ -7,14 +7,15 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("localidadModalLabel").textContent = "Nueva Localidad";
         document.getElementById("submitLocalidad").textContent = "Guardar";
 
-        var myModal = new bootstrap.Modal(document.getElementById("localidadModal"));
+        const myModal = new bootstrap.Modal(document.getElementById("localidadModal"));
         myModal.show();
     }
 
     // Función para abrir modal de editar localidad
     window.editarLocalidad = function (id_localidad) {
+        showLoading();
         $.ajax({
-            url: '/api/localidad/' + id_localidad, // Asegúrate de tener esta ruta en tu backend
+            url: '/api/localidad/' + id_localidad,
             method: 'GET',
             success: function (response) {
                 if (response.success) {
@@ -28,65 +29,69 @@ document.addEventListener("DOMContentLoaded", function () {
                     document.getElementById("localidadModalLabel").textContent = "Editar Localidad";
                     document.getElementById("submitLocalidad").textContent = "Actualizar";
 
-                    var myModal = new bootstrap.Modal(document.getElementById("localidadModal"));
+                    const myModal = new bootstrap.Modal(document.getElementById("localidadModal"));
                     myModal.show();
                 } else {
-                    alert('Error al obtener datos de la localidad.');
+                    showToast('Error al obtener datos de la localidad', 'error');
                 }
             },
             error: function () {
-                alert('Error en la petición.');
+                showToast('Error en la petición al servidor', 'error');
+            },
+            complete: function () {
+                hideLoading();
             }
         });
     }
 
-    window.eliminarLocalidad = function(localidadId, estadoActual) {
-        // Confirmación antes de proceder
-        // Definir el nuevo estado
-        let nuevoEstado = estadoActual == 1 ? 0 : 1;
-        let confirmacion =  estadoActual == 1 ? '¿Está seguro que desea inactivar la localidad?' : '¿Está seguro que desea reactivar la localidad?';
-        if (!confirm(confirmacion)) {
-            return;
-        }
-       // Datos a enviar en la petición
-       let data = {
-           estado: nuevoEstado
-       };
-       
-       // Realizar la petición fetch
-       fetch(`/api/localidad/actualizar/${localidadId}`, {
-           method: 'POST',
-           headers: {
-               'Content-Type': 'application/json',
-               'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-           },
-           body: JSON.stringify(data)
-       })
-       .then(response => response.json())
-       .then(result => {
-           if (result.ok) {
-               alert('Localidad actualizado con éxito');
-               location.reload(); // Recargar la página para reflejar los cambios
-           } else {
-               alert('Error al actualizar la localidad: ' + result.message);
-           }
-       })
-       .catch(error => {
-           console.error('Error:', error);
-           alert('Ocurrió un error inesperado');
-       });
-   }
+    // Función para cambiar el estado de la localidad
+    window.eliminarLocalidad = function (localidadId, estadoActual) {
+        const nuevoEstado = estadoActual === '1' ? '0' : '1';
+        const mensaje = estadoActual === '1'
+            ? '¿Está seguro que desea inactivar la localidad?'
+            : '¿Está seguro que desea reactivar la localidad?';
 
-    // Evento para el formulario de guardar localidad
+        showConfirm(mensaje, async () => {
+            showLoading();
+            try {
+                const response = await fetch(`/api/localidad/cambiar_estado/${localidadId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success', () => location.reload());
+                } else {
+                    showToast(result.error || 'Error al cambiar el estado de la localidad', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error de conexión con el servidor', 'error');
+            } finally {
+                hideLoading();
+            }
+        });
+    }
+
+    // Enviar formulario (crear o actualizar localidad)
     let localidadForm = document.getElementById("localidadForm");
-    if (!localidadForm) return; // Si no existe, no ejecuta el código y evita el error.
-    
-    localidadForm.addEventListener("submit", function (e) {        e.preventDefault();        event.preventDefault();
+    if (!localidadForm) return;
 
-        let id_localidad = document.getElementById("localidadId").value;
-        let formData = new FormData(this);
-        let url = id_localidad ? '/api/localidad/actualizar/' + id_localidad : '/api/localidad/crear';
-        let method = 'POST';
+    localidadForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        showLoading();
+
+        const id_localidad = document.getElementById("localidadId").value;
+        const formData = new FormData(this);
+        const url = id_localidad ? `/api/localidad/actualizar/${id_localidad}` : '/api/localidad/crear';
+        const method = 'POST';
 
         fetch(url, {
             method: method,
@@ -98,12 +103,17 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(response => response.json())
             .then(data => {
                 if (data.ok) {
-                    alert(id_localidad ? "Localidad actualizada" : "Localidad creada");
-                    location.reload(); // Recargar para mostrar cambios
+                    showToast(id_localidad ? "Localidad actualizada" : "Localidad creada", 'success', () => location.reload());
                 } else {
-                    alert("Hubo un error al guardar la localidad. " + data.error);
+                    showToast("Hubo un error al guardar la localidad. " + (data.error || ""), 'error');
                 }
             })
-            .catch(error => console.error("Error:", error));
+            .catch(error => {
+                console.error("Error:", error);
+                showToast("Error en la conexión al servidor", "error");
+            })
+            .finally(() => {
+                hideLoading();
+            });
     });
 });

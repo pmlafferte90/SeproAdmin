@@ -219,13 +219,47 @@ class AreaController extends Controller
             // Obtener Áreas y Subáreas activas
             //$areas = $this->areaService->obtenerAreasSubareasActivas();
             // Obtener Clientes Activos
-            //$clientes = $this->clienteService->obtenerClientesActivos($id_cliente);
+            $clientes = $this->clienteService->obtenerClientesActivos($id_cliente);
 
-            return view('Submenus.area_empresa', compact('areaEmpresas'/*,'areas'*/,'id_cliente'/*,'clientes'*/));
+            return view('Submenus.area_empresa', compact('areaEmpresas','id_cliente','clientes'));
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
+    }
+
+    public function searchSubareas(Request $request)
+    {
+        $q    = $request->input('q', '');
+        $page = $request->input('page', 1);
+        $perPage = 50;
+
+         $query = SubArea::with('area')
+            ->where('estado', 1)
+            ->when($q, function($qb) use ($q) {
+                $qb->where(function($q2) use ($q) {
+                    $q2->where('nombre', 'like', "%{$q}%")
+                       ->orWhere('codigo', 'like', "%{$q}%")
+                       // nueva cláusula para buscar también por área:
+                       ->orWhereHas('area', function($q3) use ($q) {
+                           $q3->where('nombre', 'like', "%{$q}%");
+                       });
+                });
+            });
+
+        $paginador = $query->paginate($perPage, ['*'], 'page', $page);
+
+        $data = $paginador->getCollection()->map(fn($sub) => [
+            'id'     => $sub->id,
+            'text'   => $sub->nombre,
+            'codigo' => $sub->codigo,
+            'area'   => $sub->area->nombre,
+        ]);
+
+        return response()->json([
+            'data'       => $data,
+            'pagination' => ['more' => $paginador->hasMorePages()],
+        ]);
     }
 
     public function crear_area_empresa(Request $request)
@@ -410,31 +444,6 @@ class AreaController extends Controller
                 'ok'    => false,
                 'error' => 'Error interno del servidor'
             ], 500);
-        }
-    }
-
-    public function subareas_activas_api()
-    {
-        try {
-            $areas = $this->areaService->obtenerAreasSubareasActivas();
-
-            // Convertir a formato deseado para JS
-            $resultado = [];
-
-            foreach ($areas as $area) {
-                foreach ($area->subareas as $sub) {
-                    $resultado[] = [
-                        'id' => $sub->id,
-                        'text' => $sub->nombre,
-                        'area' => $area->nombre,
-                        'codigo' => $sub->codigo ?? null
-                    ];
-                }
-            }
-
-            return response()->json(['data' => $resultado]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
     }
     

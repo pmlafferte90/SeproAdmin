@@ -13,6 +13,5 @@ Route::put('/subarea/cambiarEstado_subarea/{id}', [AreaController::class, 'cambi
 Route::post('/area_empresa/crear', [AreaController::class, 'crear_area_empresa']);
 Route::put('/area_empresa/cambiarEstado_area_empresa/{id}', [AreaController::class, 'cambiarEstado_area_empresa']);
 Route::get('/areas_empresa/existe/{id_localidad}', [AreaController::class, 'checkExistRelationAreaEmpresa']);
-Route::get('/subareas_activas', [AreaController::class, 'subareas_activas_api']);
-
+Route::get('/subareas/search', [AreaController::class, 'searchSubareas']);
 

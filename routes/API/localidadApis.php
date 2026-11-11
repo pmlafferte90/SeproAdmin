@@ -11,7 +11,7 @@ Route::prefix('localidad')->group(function () {
     Route::post('/crear', [ClienteController::class, 'store_localidad_cliente']);
     Route::post('/actualizar/{id}', [ClienteController::class, 'update_localidad_cliente']);
     Route::post('/crear_subareas', [AreaController::class, 'asignarSubareasALocalidad']);
-
+    Route::put('/cambiar_estado/{id}', [ClienteController::class, 'cambiarEstadoLocalidad']);
 });
 
 

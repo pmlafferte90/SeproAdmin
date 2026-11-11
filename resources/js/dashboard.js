@@ -8,6 +8,25 @@ document.addEventListener("DOMContentLoaded", function() {
         });*/ 
     }
 
+    if (window.TomSelect) {
+        const localidadSelect = document.getElementById('localidad');
+
+        // Ordenar alfabéticamente las opciones
+        const opciones = Array.from(localidadSelect.options)
+            .filter(o => o.value !== '')
+            .sort((a, b) => a.text.localeCompare(b.text));
+
+        localidadSelect.innerHTML = '<option value="">Seleccione una Localidad</option>';
+        opciones.forEach(opt => localidadSelect.appendChild(opt));
+
+        // Inicializar Tom Select
+        new TomSelect('#localidad', {
+            placeholder: 'Seleccione una Localidad',
+            allowEmptyOption: true,
+        });
+    }
+
+
     function capitalizarPrimeraLetra(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
@@ -84,8 +103,27 @@ document.addEventListener("DOMContentLoaded", function() {
             novedades,
             accesorios_extintor,
             novedades_especiales,
-            novedades_gabinete
+            novedades_gabinete,
+            observacionesInternas
         } = await res.json();
+
+        window._observacionesInternas = observacionesInternas || [];
+
+        const tbodyObs = document.getElementById('observacionesInternasBody');
+        tbodyObs.innerHTML = '';
+
+        if (window._observacionesInternas.length === 0) {
+            tbodyObs.innerHTML = `<tr><td colspan="2" class="text-center text-muted">Sin observaciones</td></tr>`;
+        } else {
+            window._observacionesInternas.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center align-middle">${row.codigo}</td>
+                    <td class="text-center align-middle">${row.observaciones}</td>
+                `;
+                tbodyObs.appendChild(tr);
+            });
+        }
 
         cuerpoTabla.innerHTML = '';
         if (!rows.length) {
@@ -123,9 +161,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${i + 1}</td>
+                    <td>${fecha}</td>
                     <td>${r.codigo}</td>
                     <td>${r.nombre_ubicacion}</td>
-                    <td>${fecha}</td>
                     <td>${fechaProx}</td>
                     <td>${r.clase}</td>
                     <td>${pesoFormateado} ${r.unidad || ''}</td>
@@ -194,7 +232,11 @@ document.addEventListener("DOMContentLoaded", function() {
             hideLoading();
         }
     });
-
+    
+    window.mostrarModalObservaciones = function () {
+        const modal = new bootstrap.Modal(document.getElementById('modalObservacionesInternas'));
+        modal.show();
+    };
 
     // Flatpickr para fechas
     if (window.flatpickr) {

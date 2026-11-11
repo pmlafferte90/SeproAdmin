@@ -1,4 +1,4 @@
-<div class="modal fade" id="areaEmpresaModal" tabindex="-1" aria-labelledby="areaEmpresaModalLabel" aria-hidden="true">
+<div class="modal fade" id="areaEmpresaModal" tabindex="-1" aria-labelledby="areaEmpresaModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
@@ -15,17 +15,7 @@
           <div class="row">
             <div class="col-6 mb-3">
               <label for="cliente" class="form-label"><strong>Seleccione un Cliente</strong></label>
-              {{-- <select name="cliente" id="cliente" class="form-control shadow-sm" required>
-                <option value="" disabled selected>Seleccione un cliente</option>
-                @foreach ($clientes as $cliente)
-                    <option value="{{ $cliente->id }}">{{ $cliente->razon_social }}</option>
-                @endforeach
-              </select> --}}
-
-              <select name="cliente" id="cliente" class="form-control shadow-sm" required>
-                <option value="" disabled selected>Seleccione un cliente</option>
-              </select>
-
+              <select name="cliente" id="cliente" class="form-control shadow-sm" autocomplete="off" required></select>
             </div>
 
             <div class="col-6 mb-3">
@@ -70,20 +60,8 @@
   </div>
 </div>
 
-{{-- @php
-$subareasRaw = $areas->flatMap(function ($area) {
-        // Usa la propiedad subAreas (eager‐loaded), nunca subareas()
-        return $area->subAreas->map(function ($sub) use ($area) {
-            return [
-                'id'     => $sub->id,
-                'text'   => $sub->nombre,
-                'codigo' => $sub->codigo,
-                'area'   => $area->nombre,
-            ];
-        });
-    });
-@endphp
-
 <script>
-    window.subareasRaw = @json($subareasRaw);
-</script> --}}
+    window.clientesData = @json(
+        $clientes->map(fn($c) => ['value' => $c->id, 'text' => $c->razon_social])->sortBy('text')->values()
+    );
+</script>

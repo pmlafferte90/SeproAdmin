@@ -9,7 +9,7 @@
     <tbody>
     <tr>
         <!-- Columna vacía para separación -->
-        <td colspan="2" style="font-weight: bold; width: 150px; height: 300px;">
+        <td colspan="2" style="font-weight: bold; width: 150px; height: 330px;">
         </td>
     </tr>
     <tr>
@@ -20,7 +20,7 @@
 
 <table>
     @php
-        $filtered = array_diff($selected, ['area_nombre', 'observaciones']);
+        $filtered = array_diff($selected, ['area_nombre', 'observaciones', 'auditor']);
         $colspan = count($filtered) + 1;
     @endphp
     <thead>

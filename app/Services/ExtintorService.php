@@ -239,10 +239,12 @@ class ExtintorService
                 "area_seguridad_abreviatura.descripcion AS area_seguridad_des", 
                 "instructivo_uso_abreviatura.descripcion AS instructivo_uso_des",
                 "rectangulo_instalacion_abreviatura.descripcion AS rectangulo_instalacion_des", 
-                "control_extintor_cli.imagen_observacion",
+                DB::raw("CASE WHEN control_extintor_cli.imagen_observacion IS NOT NULL AND control_extintor_cli.imagen_observacion != '' THEN true ELSE false END AS tiene_imagen"),
                 "control_extintor_cli.fecha_creacion",
                 "control_extintor_cli.id_cliente_localidad",
-                "control_extintor_cli.estado"
+                "control_extintor_cli.estado",
+                'control_extintor_cli.id_usuario',
+                DB::raw("CONCAT(auditor.nombre, ' ', auditor.apellido) AS auditor_full_name")
             )
             ->join('cliente_localidad', 'cliente_localidad.id', '=', 'control_extintor_cli.id_cliente_localidad')
             ->join('cliente', 'cliente.id', '=', 'cliente_localidad.id_cliente')
@@ -266,6 +268,8 @@ class ExtintorService
             ->leftJoin('nomenclatura AS rectangulo_instalacion', 'rectangulo_instalacion.id', '=', 'control_extintor_cli.rectangulo_instalacion')
             ->leftJoin('nomenclatura AS rectangulo_instalacion_abreviatura', 'rectangulo_instalacion_abreviatura.id', '=', 'control_extintor_cli.rectangulo_instalacion')
             ->leftJoin('nomenclatura AS hidrante_nomenclatura', 'hidrante_nomenclatura.id', '=', 'control_extintor_cli.hidrante')
+            ->leftJoin('ci_users AS auditor',
+               'auditor.id', '=', 'control_extintor_cli.id_usuario')
             ->where('control_extintor_cli.estado',1);
 
             if($id_cliente != 0){
@@ -295,7 +299,10 @@ class ExtintorService
                         ->orWhere('control_extintor_cli.clase', 'like', "%{$buscar}%")
                         ->orWhere('area.nombre', 'like', "%{$buscar}%")  // AREA
                         ->orWhere('sub_area.nombre', 'like', "%{$buscar}%")  // UBICACION
-                        ->orWhere('control_extintor_cli.marca', 'like', "%{$buscar}%");
+                        ->orWhere('control_extintor_cli.marca', 'like', "%{$buscar}%")
+                        ->orWhere('control_extintor_cli.peso', 'like', "%{$buscar}%")// PESO
+                        ->orWhere(DB::raw("CONCAT(control_extintor_cli.clase, ' ', control_extintor_cli.peso)"), 'like', "%{$buscar}%");
+                        ;
                 });
             }
 
@@ -366,7 +373,7 @@ class ExtintorService
                 "area_seguridad_abreviatura.descripcion AS area_seguridad_des", 
                 "instructivo_uso_abreviatura.descripcion AS instructivo_uso_des",
                 "rectangulo_instalacion_abreviatura.descripcion AS rectangulo_instalacion_des", 
-                "control_extintor_cli.imagen_observacion",
+                //"control_extintor_cli.imagen_observacion",
                 "control_extintor_cli.fecha_creacion",
                 "control_extintor_cli.id_cliente_localidad",
                 "control_extintor_cli.estado"
@@ -484,7 +491,7 @@ class ExtintorService
     {
         try{
             // Obtener ID del usuario autenticado
-            $id_usuario = auth()->id() ?? 1;
+            $id_usuario = $data['id_usuario'] ?? 1;
             // Crear el registro de control de extintor
             $controlExtintor = new ControlExtintorCli();
             $controlExtintor->fecha_revision = $data['fecha_revision'];
@@ -501,16 +508,16 @@ class ExtintorService
             $controlExtintor->cilindro = $data['cilindro'];
             $controlExtintor->fecha_recarga = $data['fecha_recarga'];
             $controlExtintor->fecha_prox_recarga = $data['fecha_proxima_recarga'];
-            $controlExtintor->fecha_fabricacion = $data['fecha_fabricacion'] ?: null;
-            $controlExtintor->fecha_prueba_hidrostatica = $data['fecha_prueba_hidrostatica'] ?: null;
-            $controlExtintor->area_seguridad = $data['area_seguridad'] ?: null;
-            $controlExtintor->instructivo_uso = $data['instructivo'] ?: null;
-            $controlExtintor->instructivo_clasificacion = $data['instructivo_clasificacion'] ?: null;
-            $controlExtintor->flecha_ubicacion = $data['flecha_ubicacion'] ?: null;
-            $controlExtintor->silueta = $data['silueta'] ?: null;
-            $controlExtintor->rectangulo_instalacion = $data['rectangulo_instalacion'] ?: null ; 
+            $controlExtintor->fecha_fabricacion = $data['fecha_fabricacion'] ?? null;
+            $controlExtintor->fecha_prueba_hidrostatica = $data['fecha_prueba_hidrostatica'] ?? null;
+            $controlExtintor->area_seguridad = $data['area_seguridad'] ?? null;
+            $controlExtintor->instructivo_uso = $data['instructivo'] ?? null;
+            $controlExtintor->instructivo_clasificacion = $data['instructivo_clasificacion'] ?? null;
+            $controlExtintor->flecha_ubicacion = $data['flecha_ubicacion'] ?? null;
+            $controlExtintor->silueta = $data['silueta'] ?? null;
+            $controlExtintor->rectangulo_instalacion = $data['rectangulo_instalacion'] ?? null ;
             $controlExtintor->hidrante = $data['hidrante'];
-            $controlExtintor->dimension_vidrio = $data['dimension_vidrio'] ?: null;
+            $controlExtintor->dimension_vidrio = $data['dimension_vidrio'] ?? null;
             $controlExtintor->novedad_marbete = $data['observaciones_marbete'];
             $controlExtintor->observaciones = $data['observaciones'];
             $controlExtintor->fecha_creacion = now();
@@ -537,7 +544,6 @@ class ExtintorService
                 'data' => $controlExtintor
             ], 201);
         } catch (\Exception $e) {
-            dd($e);
             return response()->json([
                 'ok' => false,
                 'error' => 'No se pudo crear el Control'
@@ -563,8 +569,8 @@ class ExtintorService
         $controlExtintor->mano = $input['mano'];
         $controlExtintor->seguro = $input['seguro'];
         $controlExtintor->cilindro = $input['cilindro'];
-        $controlExtintor->fecha_recarga = $input['fecha_recarga'];
-        $controlExtintor->fecha_prox_recarga = $input['fecha_proxima_recarga'];
+        $controlExtintor->fecha_recarga = $input['fecha_recarga'] ?? null;
+        $controlExtintor->fecha_prox_recarga = $input['fecha_proxima_recarga'] ?? null;
         $controlExtintor->fecha_fabricacion = $input['fecha_fabricacion'] ?: null;
         $controlExtintor->fecha_prueba_hidrostatica = $input['fecha_prueba_hidrostatica'] ?: null;
         $controlExtintor->area_seguridad = $input['area_seguridad'] ?: null;
@@ -572,10 +578,10 @@ class ExtintorService
         $controlExtintor->flecha_ubicacion = $input['flecha_ubicacion'] ?: null;
         $controlExtintor->instructivo_clasificacion = $input['instructivo_clasificacion'] ?: null;
         $controlExtintor->silueta = $input['silueta'] ?: null;
-        $controlExtintor->hidrante = $input['hidrante'];
+        $controlExtintor->hidrante = $input['hidrante'] ?? null;
         $controlExtintor->dimension_vidrio = $input['dimension_vidrio'] ?: null;
         $controlExtintor->rectangulo_instalacion = $input['rectangulo_instalacion'] ?: null;
-        $controlExtintor->novedad_marbete = $input['observaciones_marbete'];
+        $controlExtintor->novedad_marbete = $input['observaciones_marbete'] ?? null;
         $controlExtintor->observaciones = $input['observaciones'] ?: null;
         $controlExtintor->fecha_actualizacion = now();
     
@@ -604,6 +610,7 @@ class ExtintorService
                     ->where('id_subarea_empresa',   $id_subarea_empresa)
                     ->whereYear('fecha_revision',   $dt->year)
                     ->whereMonth('fecha_revision',  $dt->month)
+                    ->where('estado', 1)
                     ->exists();
 
     }
@@ -678,6 +685,7 @@ class ExtintorService
                 ) as observaciones")
             ])
             ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->where('cec.estado', 1)
             ->where(function($main) use ($fechaRevision, $fechaRecarga) {
                 if ($fechaRevision) {
                     [$y, $m] = explode('-', substr($fechaRevision, 0, 7));
@@ -725,12 +733,14 @@ class ExtintorService
             ->join('nomenclatura as n', 
                    'n.id', '=', 'co.nomenclatura_id')
             ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->where('cec.estado', 1) 
             ->whereYear('cec.fecha_revision',  $year)
             ->whereMonth('cec.fecha_revision', $month)
             ->where('n.id_tipo', 6)
             ->whereIn('n.abreviatura', [
                 'E.T.', 'S.R.', 'A.C.I.', 'E.N.E.', 
-                'U.N.E.', 'OBS',  'E.O.',  'A.V.',  'F.I.E.'
+                'U.N.E.', 'OBS',  'E.O.',  'A.V.',  'F.I.E.',
+                'U.N.M.', 'F.M.', 'I.P.'
             ])
             ->select([
                 'n.descripcion',
@@ -753,12 +763,14 @@ class ExtintorService
             ->join('control_extintor_observaciones as co', 'co.control_extintor_id', '=', 'cec.id')
             ->join('nomenclatura as n',                    'n.id',                '=', 'co.nomenclatura_id')
             ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->where('cec.estado', 1)
             ->whereYear('cec.fecha_revision',  $year)
             ->whereMonth('cec.fecha_revision', $month)
             ->where('n.id_tipo', 6)
             ->whereIn('n.abreviatura', [
                 'C.D.', 'M.D.', 'F.A.', 'M.A.',
-                'F.S.', 'C.S.', 'S.S.', 'C.E.', 'S.E.'
+                'F.S.', 'C.S.', 'S.S.', 'C.E.', 'S.E.',
+                'C.P.', 'C.PT.'
             ])
             ->select([
                 'n.abreviatura',
@@ -785,6 +797,7 @@ class ExtintorService
             ->join('nomenclatura as n', 
                    'n.id',                '=', 'co.nomenclatura_id')
             ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->where('cec.estado', 1) 
             ->whereYear('cec.fecha_revision',  $year)
             ->whereMonth('cec.fecha_revision', $month)
             ->where('n.id_tipo', 6)  // asumimos mismo tipo
@@ -821,31 +834,72 @@ class ExtintorService
                     ->orOn('n.id', '=', 'cec.silueta')
                     ->orOn('n.id', '=', 'cec.rectangulo_instalacion');
             })
+            ->join('tipo as t', 't.id', '=', 'n.id_tipo')
             ->where('cec.id_cliente_localidad', $idClienteLocalidad)
+            ->where('cec.estado', 1)
             ->whereYear('cec.fecha_revision', $year)
             ->whereMonth('cec.fecha_revision', $month)
-            ->where(function($q) {
-                $q->where(function($sub) {
-                    $sub->where('n.id_tipo', 5)
-                        ->where('n.abreviatura', 'C.L.');
+            ->where(function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereIn('n.id_tipo', [5, 17, 18, 19])
+                        ->whereIn('n.abreviatura', ['C.L.', 'F', 'C.ST.']);
                 })
-                ->orWhere(function($sub) {
-                    $sub->where('n.id_tipo', 15)
-                        ->where('n.abreviatura', 'P.');
-                })
-                ->orWhere(function($sub) {
-                    $sub->where('n.id_tipo', 16)
-                        ->where('n.abreviatura', 'F.');
+                ->orWhere(function ($sub) {
+                    $sub->whereIn('n.id_tipo', [15, 16])
+                        ->whereIn('n.abreviatura', ['P.', 'F']);
                 });
             })
             ->select([
                 'n.abreviatura',
-                'n.descripcion',
+                DB::raw("CONCAT(n.descripcion, ' : ', t.descripcion) as descripcion"),
                 DB::raw('COUNT(*) as cantidad')
             ])
-            ->groupBy('n.abreviatura', 'n.descripcion')
+            ->groupBy('n.abreviatura', 'n.descripcion', 't.descripcion')
             ->orderByDesc('cantidad')
             ->get();
     }
+
+    public function getObservacionesInternas(int $idClienteLocalidad, string $fechaRevision)
+    {
+        [$year, $month] = explode('-', substr($fechaRevision, 0, 7));
+
+        return DB::table('control_extintor_cli')
+            ->select('codigo', 'observaciones')
+            ->where('id_cliente_localidad', $idClienteLocalidad)
+            ->where('estado', 1)
+            ->whereYear('fecha_revision', $year)
+            ->whereMonth('fecha_revision', $month)
+            ->whereNotNull('observaciones')
+            ->where('observaciones', '!=', '')
+            ->orderBy('codigo')
+            ->get();
+    }
+
+    public function obtenerImagenObservacion($id)
+    {
+        $control = ControlExtintorCli::select('imagen_observacion', 'marca', 'fecha_revision')->find($id);
+
+        if (!$control || !$control->imagen_observacion) {
+            return null;
+        }
+
+        $valor = $control->imagen_observacion;
+
+        // Las imagenes ya no se guardan en base64: la columna tiene la key del bucket R2
+        if (!str_starts_with($valor, 'data:') && strlen($valor) < 500) {
+            return [
+                'url' => Storage::disk('s3')->url($valor),
+                'marca' => $control->marca,
+                'fecha' => $control->fecha_revision,
+            ];
+        }
+
+        return [
+            'image' => $valor,
+            'marca' => $control->marca,
+            'fecha' => $control->fecha_revision,
+        ];
+    }
+
 
 }

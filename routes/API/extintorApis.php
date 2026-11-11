@@ -18,6 +18,7 @@ Route::get('/control_extintor_cliente/{cliente}/ubicaciones',[ExtintorController
 Route::get('extintorApis/{cliente}/detalle', [ExtintorController::class, 'detalleExtintorExcel'])->name('extintor.detalleExtintorExcel');
 Route::get('/reporte-resumen-extintores', [ExtintorController::class, 'exportResumenExtintores'])->name('reporte_resumen_extintores');
 Route::get('/control-extintor/ultimo', [ExtintorController::class, 'getUltimoControl']);
+Route::get('/control-extintor/{id}/imagen', [ExtintorController::class, 'obtenerImagen']);
 
 
 

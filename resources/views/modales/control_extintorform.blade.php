@@ -17,7 +17,10 @@
 
                 <div class="modal-body">
                     <input type="hidden" id="controlExtintorId" name="controlExtintorId" value="{{ $controlExtintor->id ?? '' }}">
-
+                   <input type="hidden"
+                         id="id_usuario"
+                         name="id_usuario"
+                         value="{{ auth()->id() }}">
                     <!-- Cliente, Localidad, Fecha -->
                     <fieldset class="border p-3 rounded-2 mb-3">
                         <div class="row mb-3 g-3">
@@ -137,12 +140,12 @@
                     <fieldset class="border p-3 rounded mb-3">
                         <div class="row mb-3 g-3">
                             <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Área de Seguridad', 'name' => 'area_seguridad', 'tipoFiltro' => 'AREA-SEGURIDAD'])</div>
-                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Instructivo de Uso', 'name' => 'instructivo', 'tipoFiltro' => 'USO-CLASIFICACION-FLECHA-SILUETA'])</div>
-                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Instructivo de Clasificación', 'name' => 'instructivo_clasificacion', 'tipoFiltro' => 'USO-CLASIFICACION-FLECHA-SILUETA'])</div>
+                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Instructivo de Uso', 'name' => 'instructivo', 'tipoFiltro' => 'INSTRUCTIVO-USO'])</div>
+                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Instructivo de Clasificación', 'name' => 'instructivo_clasificacion', 'tipoFiltro' => 'INSTRUCTIVO-CLASIFICACIÓN'])</div>
                         </div>
                         <div class="row mb-3 g-3">
-                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Flecha de Ubicación', 'name' => 'flecha_ubicacion', 'tipoFiltro' => 'USO-CLASIFICACION-FLECHA-SILUETA'])</div>
-                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Silueta de Extintor', 'name' => 'silueta', 'tipoFiltro' => 'USO-CLASIFICACION-FLECHA-SILUETA'])</div>
+                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Flecha de Ubicación', 'name' => 'flecha_ubicacion', 'tipoFiltro' => 'FLECHA-UBICACIÓN'])</div>
+                            <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Silueta de Extintor', 'name' => 'silueta', 'tipoFiltro' => 'SILUETA-EXTINTOR'])</div>
                             <div class="col-md-4">@include('componentes.select_nomenclatura', ['label' => 'Rectángulo de Instalación', 'name' => 'rectangulo_instalacion', 'tipoFiltro' => 'RECTANGULO'])</div>
                         </div>
                     </fieldset>

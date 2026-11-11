@@ -29,6 +29,39 @@
         filter: brightness(0.9);
         box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
     }
+
+    .observacion-alerta {
+        width: 37px;
+        height: 37px;
+        background-color: #fff;
+        border-radius: 8px;
+        border: 2px solid #dc3545;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .observacion-alerta:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .img-alerta {
+        width: 35px;
+        height: auto;
+    }
+
+    .modal-content {
+        border-radius: 0.75rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f1f1f1;
+    }
+
 </style>
 @endpush
 
@@ -45,9 +78,7 @@
                             <select id="localidad" name="localidad" class="form-control shadow-sm">
                                 <option value="">Seleccione una Localidad</option>
                                 @foreach($localidades as $localidad)
-                                <option value="{{ $localidad->id }}">
-                                    {{ $localidad->nombre }}
-                                </option>
+                                    <option value="{{ $localidad->id }}">{{ $localidad->nombre }}</option>
                                 @endforeach
                             </select>
                             <span class="input-group-text bg-light form-select-sm">
@@ -93,11 +124,20 @@
         </div>
 
         <div class="col-md-9">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm position-relative">
+
+                <div class="position-absolute top-0 end-0 m-2">
+                    <div class="observacion-alerta" onclick="mostrarModalObservaciones()" title="Ver observaciones internas">
+                        <img src="{{ asset('img/extintor-advertencia.png') }}" alt="Ver observaciones" class="img-alerta">
+                    </div>
+                </div>
+
                 <div class="card-body p-4" style="background-color: #E5402B">
+
                     <div class="d-flex justify-content-center align-items-center text-white">
                         <h5 class="fw-semibold text-uppercase fs-6">Resumen de Extintores por Recargar</h5>
                     </div>
+
                     <div class="row g-3 h-100">
                         <!-- PQS -->
                         <div class="col-md-3">
@@ -217,9 +257,9 @@
                             <thead>
                             <tr>
                                 <th><i class="fas fa-hashtag me-1"></i></th>
+                                <th><i class="fas fa-calendar-alt me-1"></i>Fecha Revisión</th>
                                 <th><i class="fas fa-barcode me-1"></i>Código</th>
                                 <th><i class="fas fa-map-marker-alt me-1"></i>Ubicación</th>
-                                <th><i class="fas fa-calendar-alt me-1"></i>Fecha Revisión</th>
                                 <th><i class="fas fa-calendar-alt me-1"></i>Fecha Prox. Recarga</th>
                                 <th><i class="fas fa-layer-group me-1"></i>Clase</th>
                                 <th><i class="fas fa-weight-hanging me-1"></i>Peso</th>
@@ -257,6 +297,9 @@
                           <i class="fas fa-file-excel me-2"></i>
                           <span>Excel</span>
                         </button>
+                        {{-- <div class="observacion-alerta ms-2" onclick="mostrarModalObservaciones()" title="Ver observaciones internas">
+                            <img src="{{ asset('img/extintor-advertencia.png') }}" alt="Ver observaciones" class="img-alerta">
+                        </div> --}}
                       </div>
                     </div>
                 </div>
@@ -435,6 +478,34 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalObservacionesInternas" tabindex="-1" aria-labelledby="modalObsLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" style="background-color: var(--sepro); border-top-left-radius: .75rem; border-top-right-radius: .75rem;">
+                <h5 class="modal-title fw-semibold text-uppercase" id="modalObsLabel">
+                <i class="fas fa-exclamation-triangle me-2"></i> Observaciones Internas
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-sm table-hover table-bordered align-middle mb-0">
+                <thead class="table-light text-center text-uppercase small">
+                    <tr>
+                    <th style="width: 20%;">Código</th>
+                    <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody id="observacionesInternasBody">
+                    <tr>
+                    <td colspan="2" class="text-center small text-muted py-3">Sin datos</td>
+                    </tr>
+                </tbody>
+                </table>
+            </div>
             </div>
         </div>
     </div>

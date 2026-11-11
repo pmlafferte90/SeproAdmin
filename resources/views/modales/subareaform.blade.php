@@ -1,4 +1,4 @@
-<div class="modal fade" id="subareaModal" tabindex="-1" aria-labelledby="subareaModalLabel" aria-hidden="true">
+<div class="modal fade" id="subareaModal" tabindex="-1" aria-labelledby="subareaModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -12,12 +12,13 @@
          <!-- Combo box para áreas activas -->
          <div class="form-group mb-3">
             <label for="area">Área:</label>
-            <select class="form-control shadow-sm" id="area_id" name="area_id" required>
+            {{-- <select class="form-control shadow-sm" id="area_id" name="area_id" required>
                 <option value="">Seleccione un área</option>
                 @foreach($areas as $area)
                     <option value="{{ $area->id }}">{{ $area->nombre }}</option>
                 @endforeach
-            </select>
+            </select> --}}
+            <select class="form-control tom-select" id="area_id" name="area_id" required></select>
         </div>
         <div class="mb-3">
             <label for="nombre" class="form-label">Nombre</label>
@@ -60,3 +61,7 @@
     </div>
   </div>
 </div>
+
+<script type="application/json" id="areaOptionsJson">
+    {!! json_encode($areas->map(fn($a) => ['id' => $a->id, 'nombre' => $a->nombre])->toArray()) !!}
+</script>

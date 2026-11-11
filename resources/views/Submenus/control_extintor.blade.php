@@ -38,18 +38,48 @@
                         </option>
                     @endforeach
                 </select>
-                @hasanyrole('Admin|Revisor')
                 <button class="btn btn-success" style="font-size: 13px;" onclick="exportarExcel({{ $id_cliente }})">
                     <i class="fa fa-file-excel"></i> Exportar Excel
                 </button>
-                 @if(request('mes') && request('anio'))
+
+                <form
+                id="importControlesForm"
+                action="{{ route('extintores.controles.import') }}"
+                method="POST"
+                enctype="multipart/form-data"
+                class="d-flex align-items-center gap-2"
+                >
+                @csrf
+                <input type="hidden" name="id_localidad" value="{{ $id_localidad }}">
+
+                <input
+                    type="file"
+                    name="archivo"
+                    id="archivoControles"
+                    accept=".csv,.txt,.xlsx"
+                    class="form-control form-control-sm"
+                    required
+                />
+
+                <button type="submit" class="btn btn-sm btn-primary">
+                    Importar
+                </button>
+                </form>
+
+
+                @hasanyrole('Admin')
+                @if(request('mes') && request('anio'))
                 <button type="button" class="btn btn-warning" style="font-size: 13px;" onclick="modalHelper.open('modalEnviarCorreo')">
                     <i class="fa fa-envelope"></i> Enviar Reporte por Correo
                 </button>
+                @endif
+                @endhasanyrole
+                @hasanyrole('Admin|Revisor')
+                @if(request('mes') && request('anio'))
                 <button
                     class="btn btn-success"
                     style="font-size: 13px;"
-                    onclick="ubicacionesxRevisar({{ $id_cliente }}, {{ request('mes') }}, {{ request('anio') }})"
+                    onclick="ubicacionesxRevisar({{ $id_localidad }}, {{ request('mes') }}, {{ request('anio') }})"
                 >
                     <i class="fas fa-map-marker-alt"></i>
                     Ubicaciones por revisar
@@ -70,15 +100,15 @@
             {{ $totalExtintoresxLocalidad }}
         @endsection
 
-        <x-table
-          :headers="[
+        @php
+          $headers = [
             ['key' => 'fecha_revision',              'label' => 'FECHA REVISIÓN',                    'style' => 'min-width: 150px;'],
-            ['key' => 'codigo',                      'label' => 'COD',                               'style' => 'min-width: 100px;'],
+            ['key' => 'codigo',                      'label' => 'COD',                               'style' => 'min-width: 80px;'],
             ['key' => 'area_nombre',                 'label' => 'ÁREA',                              'style' => 'min-width: 100px;'],
             ['key' => 'ubicacion',                   'label' => 'UBICACIÓN',                         'style' => 'min-width: 200px;'],
-            ['key' => 'clase',                       'label' => 'CLASE',                             'style' => 'min-width: 100px;'],
-            ['key' => 'marca',                       'label' => 'MARCA',                             'style' => 'min-width: 100px;'],
-            ['key' => 'peso',                        'label' => 'PESO',                              'style' => 'min-width: 100px;'],
+            ['key' => 'clase',                       'label' => 'CLASE',                             'style' => 'min-width: 80px;'],
+            ['key' => 'marca',                       'label' => 'MARCA',                             'style' => 'min-width: 80px;'],
+            ['key' => 'peso',                        'label' => 'PESO',                              'style' => 'min-width: 80px;'],
             ['key' => 'manguera',                    'label' => 'MANGUERA', 'noShow' => true],
             ['key' => 'manometro',                   'label' => 'MANÓMETRO', 'noShow' => true],
             ['key' => 'seguro',                      'label' => 'SEGURO', 'noShow' => true],
@@ -96,12 +126,33 @@
             ['key' => 'fecha_fabricacion',           'label' => 'FECHA FABRICACIÓN',                 'style' => 'min-width: 150px;'],
             ['key' => 'fecha_prueba_hidros',         'label' => 'FECHA PRUEBA HIDROSTÁTICA',         'style' => 'min-width: 150px;'],
             ['key' => 'novedad_marbete',             'label' => 'MARBETE',                           'style' => 'min-width: 150px;'],
-            ['key' => 'observaciones_nomen',         'label' => 'OBSERVACIONES', 'style' => 'min-width: 150px;'],
-            ['key' => 'observaciones',               'label' => 'OBSERVACIONES INTERNAS'],
-            ['key' => 'acciones',                    'label' => 'ACCIONES',   'class' => 'sticky-col bg-white border-start','style'=>'z-index:5;box-shadow:-4px 0 6px -2px rgba(0,0,0,0.2);', 'noShow' => true]
-          ]"
-         :rows="$controlExtintores->map(function($controlExtintor) use ($id_cliente){
-                return [
+            ['key' => 'observaciones_nomen',         'label' => 'OBSERVACIONES', 'style' => 'min-width: 150px;']
+          ];
+
+           if (auth()->user()->hasRole(['Admin', 'Revisor'])) {
+              $headers[] = ['key' => 'observaciones', 'label' => 'OBSERVACIONES INTERNAS'];
+           }
+
+           if (auth()->user()->hasRole('Admin')) {
+                $headers[] = [
+                  'key'    => 'auditor',
+                  'label'  => 'AUDITOR',
+                  'style'  => 'min-width:150px;',
+                  'noShow' => true
+                ];
+           }
+
+          $headers[] = [
+              'key'   => 'acciones',
+              'label' => 'ACCIONES',
+              'class' => 'sticky-col bg-white border-start',
+              'style' => 'z-index:5;box-shadow:-4px 0 6px -2px rgba(0,0,0,0.2);'
+          ];
+
+
+          $rows = $controlExtintores->map(function($controlExtintor) use ($id_cliente) {
+            // columnas comunes
+            $row = [
                     $controlExtintor->fecha_revision,
                     $controlExtintor->codigo,
                     $controlExtintor->area_nombre,
@@ -126,16 +177,26 @@
                     $controlExtintor->fecha_fabricacion,
                     $controlExtintor->fecha_prueba_hidrostatica,
                     $controlExtintor->novedad_marbete,
-                    $controlExtintor->observacionesNomenclatura->pluck('abreviatura')->implode(', ') ?: '-',
-                    $controlExtintor->observaciones,
-                    view('components.actions', [
-                        'actions' => array_filter([
+                    $controlExtintor->observacionesNomenclatura->pluck('abreviatura')->implode(', ') ?: '-'
+                ];
+
+            if (auth()->user()->hasRole(['Admin', 'Revisor'])) {
+              $row[] = $controlExtintor->observaciones ?? '-';
+            }
+
+            if (auth()->user()->hasRole('Admin')) {
+               $row[] = $controlExtintor->auditor_full_name ?? '-';
+            }
+
+            // Acciones
+            $row[] = view('components.actions', [
+                'actions' => array_filter([
                             [
                                 'class' => 'btn-success',
                                 'title' => 'Visualizar Imagen',
                                 'icon' => 'fa fa-fire-extinguisher',
-                                'onclick' => $controlExtintor->imagen_observacion
-                                    ? 'viewImage(\'' . \Illuminate\Support\Facades\Storage::disk('s3')->url($controlExtintor->imagen_observacion) . '\', \''. $controlExtintor->marca . '\', \''. $controlExtintor->fecha_revision . '\')'
+                                'onclick' => $controlExtintor->tiene_imagen
+                                    ? 'viewImageById(' . $controlExtintor->id . ')'
                                     : ''
                             ],
                             auth()->user()->hasAnyRole(['Admin', 'Revisor']) ? [
@@ -151,13 +212,19 @@
                                 'onclick' => 'cambiarEstadoControl(' . $controlExtintor->id . ', ' . $controlExtintor->estado . ')'
                             ] : null,
                         ])
-                    ])->render()
-                ];
-            })->toArray()"
-            :paginator="$controlExtintores"
-            :titulo="$nombreCliente"
-            :subtitulo="$nombreLocalidad"
-            ></x-table>
+              ])->render();
+            return $row;
+          })->toArray();
+        @endphp
+
+        <x-table
+          :headers="$headers"
+          :rows="$rows"
+          :paginator="$controlExtintores"
+          :titulo="$nombreCliente"
+          :subtitulo="$nombreLocalidad"
+        ></x-table>
+   
        </div>
 </div>
 <!-- Modal para mostrar la imagen -->

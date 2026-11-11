@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Empresa;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cliente;
 use App\Models\ClienteLocalidad;
 use App\Models\EmpresaOrigen;
 use App\Services\ClienteLocalidadService;
@@ -140,8 +141,16 @@ class ClienteController extends Controller
     public function cambiarEstado($id, Request $request)
     {
         try {
-            $cliente = $this->clienteService->cambiarEstadoCliente($id, $request->input('estado'));
-            $mensaje = $cliente->estado == 1 ? 'El cliente ha sido restaurado exitosamente.' : 'El cliente ha sido inactivado exitosamente.';
+            $cliente = Cliente::findOrFail($id);
+
+            $cliente->estado = $request->input('estado');
+            $cliente->fecha_actualizacion = now();
+            $cliente->save();
+
+            $mensaje = $cliente->estado == 1
+                ? 'El cliente ha sido restaurado exitosamente.'
+                : 'El cliente ha sido inactivado exitosamente.';
+
             return response()->json([
                 'success' => true,
                 'message' => $mensaje
@@ -258,23 +267,26 @@ class ClienteController extends Controller
         }
     }
 
-    public function apiClientesActivos()
+    public function cambiarEstadoLocalidad($id, Request $request)
     {
         try {
-            $clientes = $this->clienteService->obtenerClientesActivos();
+            $localidad = ClienteLocalidad::findOrFail($id);
 
-            $resultado = collect($clientes)->map(function ($cliente) {
-                return [
-                    'id' => $cliente->id,
-                    'razon_social' => $cliente->razon_social,
-                ];
-            });
+            $localidad->estado = $request->input('estado');
+            $localidad->fecha_actualizacion = now();
+            $localidad->save();
 
-            return response()->json(['data' => $resultado]);
+            $mensaje = $localidad->estado == 1
+                ? 'La localidad ha sido restaurado exitosamente.'
+                : 'La localidad  ha sido inactivado exitosamente.';
+
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje
+            ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
     }
-
 
 }

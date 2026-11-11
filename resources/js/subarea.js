@@ -74,6 +74,7 @@ window.crearSubArea = function () {
         document.getElementById("subareaModalLabel").textContent = "Nueva Ubicación";
         document.getElementById("submitButton").textContent = "Crear Ubicación";
         modalHelper.open('subareaModal');
+        inicializarTomAreaSelect();
         hideLoading();
     } catch (error) {
         console.error("Error en crearSubArea:", error);
@@ -105,6 +106,7 @@ window.editarSubArea = function (subarea) {
         document.getElementById("subareaModalLabel").textContent = "Editar subarea";
         document.getElementById("submitButton").textContent = "Actualizar subarea";
         modalHelper.open('subareaModal');
+        inicializarTomAreaSelect();
         hideLoading();
     } catch (error) {
         console.error("Error en editarSubArea:", error);
@@ -142,6 +144,29 @@ window.cambiarEstadoSubArea = function(id, estado) {
         });
     });
 };
+
+function inicializarTomAreaSelect() {
+    const select = document.getElementById('area_id');
+    if (!select) return;
+
+    if (select.tomselect) {
+        select.tomselect.destroy();
+    }
+
+    const areas = JSON.parse(document.getElementById('areaOptionsJson').textContent || '[]');
+
+    const tom = new TomSelect(select, {
+        placeholder: 'Buscar área...',
+        options: areas.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        valueField: 'id',
+        labelField: 'nombre',
+        searchField: ['nombre'],
+        render: {
+            option: (data, escape) => `<div>${escape(data.nombre)}</div>`,
+            item: (data, escape) => `<div>${escape(data.nombre)}</div>`
+        }
+    });
+}
 
 document.getElementById('peso').addEventListener('input', function (e) {
     const value = e.target.value;

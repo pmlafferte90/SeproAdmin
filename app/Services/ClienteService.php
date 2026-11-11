@@ -45,7 +45,7 @@ class ClienteService
             $perPage = $request->input('perPage', 5);
 
             // Consulta base
-            $query = Cliente::query()->where('estado', 1);
+            $query = Cliente::query();
 
             // Validar si el usuario tiene el rol Admin
             if ($user->hasRole('Admin')) {

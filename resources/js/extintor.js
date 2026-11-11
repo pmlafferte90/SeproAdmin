@@ -1,6 +1,8 @@
 import monthSelectPlugin from "flatpickr/dist/plugins/monthSelect";
 import { Spanish } from "flatpickr/dist/l10n/es.js";
 
+let usuarioCambioSubarea = false;
+
 document.addEventListener('DOMContentLoaded', function () {
 
 function enviarFormularioMarca() {
@@ -55,6 +57,59 @@ function enviarFormularioMarca() {
 }
 // Exportar la función globalmente
 window.enviarFormularioMarca = enviarFormularioMarca;
+
+const importForm = document.getElementById('importControlesForm');
+if (importForm) {
+  importForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const fd = new FormData(importForm);
+    const url = importForm.action;
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    try {
+      window.showLoading();
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': csrf,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: fd,
+        credentials: 'include',
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const msg = data?.message || 'Error al importar.';
+        window.showToast(msg, 'error');
+        return;
+      }
+
+      if (data.status === 'success') {
+        window.showToast(data.message, 'success', () => {
+          location.reload();
+        });
+      } else if (data.status === 'warning') {
+        // Puedes mostrar el detalle en consola o armar un modal
+        console.warn('Advertencias de importación:', data.warnings);
+        window.showToast(`${data.message} (${data.warnings.length} advertencias)`, 'warning', () => {
+          location.reload();
+        });
+      } else {
+        window.showToast(data?.message || 'Error al importar.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      window.showToast('Error de conexión con el servidor.', 'error');
+    } finally {
+      window.hideLoading();
+      importForm.reset();
+    }
+  });
+}
 
 function ubicacionesxRevisar(clienteId, mes, anio) {
   const url = `/api/control_extintor_cliente/${clienteId}/ubicaciones?mes=${mes}&anio=${anio}`;
@@ -579,6 +634,15 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         areaSelect.appendChild(option);
     });
 
+    if (areaSelect.tomselect) {
+        areaSelect.tomselect.destroy();
+    }
+
+    const tomAreaSelect = new TomSelect(areaSelect, {
+                placeholder: 'Seleccione un área',
+                allowEmptyOption: true,
+            });
+
     areaSelect.onchange = function () {
         const selectedAreaId = this.value;
         let subareaOptions = subareasPorArea[selectedAreaId] || [];
@@ -596,8 +660,9 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         if (subareaSelect.tomselect) subareaSelect.tomselect.destroy();
         subareaSelect.innerHTML = '';
 
+
         const tomSubareaSelect = new TomSelect(subareaSelect, {
-            placeholder: 'Buscar y seleccionar sub-área',
+            placeholder: 'Buscar y seleccionar ubicación',
             options: subareaOptions,
             valueField: 'value',
             labelField: 'nombreSubarea',
@@ -623,11 +688,11 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
                     document.getElementById("unidad").value = selected.unidad || '';
                     document.getElementById("area_control").value = selected.id_area || '';
 
-                    if (selected.codigo) {
+                    if (usuarioCambioSubarea && selected.codigo) {
                         try {
                             showLoading();
                             const idCliente = window.idCliente;
-                            const idLocalidad = document.getElementById('id_localidad')?.value || '';
+                            const idLocalidad = document.getElementById('id_localidad')?.value || new URLSearchParams(window.location.search).get('localidad') || '';
 
                             const res = await fetch(`/api/control-extintor/ultimo?cliente=${idCliente}&localidad=${idLocalidad}&codigo=${selected.codigo}`);
                             const data = await res.json();
@@ -648,7 +713,9 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
 
         //Se setea el subarea
         if (subareaId && subareaOptions.some(opt => opt.value == subareaId)) {
+            usuarioCambioSubarea = false;
             tomSubareaSelect.setValue(subareaId);
+            usuarioCambioSubarea = true;
         }
     };
 
@@ -656,7 +723,8 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
     if (subareaId) {
         for (const [areaId, subList] of Object.entries(subareasPorArea)) {
             if (subList.some(s => s.value == subareaId)) {
-                areaSelect.value = areaId;
+                //areaSelect.value = areaId;
+                tomAreaSelect.setValue(areaId);
                 areaSelect.dispatchEvent(new Event('change'));
                 break;
             }
@@ -675,9 +743,9 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
             }
         }
 
-        if (control_extintores.fecha_recarga) setFlatpickrMonthValue('#fecha_recarga', control_extintores.fecha_recarga);
-        if (control_extintores.fecha_prox_recarga) setFlatpickrMonthValue('#fecha_proxima_recarga', control_extintores.fecha_prox_recarga);
         if (modo !== 'nuevo') {
+            if (control_extintores.fecha_recarga) setFlatpickrMonthValue('#fecha_recarga', control_extintores.fecha_recarga);
+            if (control_extintores.fecha_prox_recarga) setFlatpickrMonthValue('#fecha_proxima_recarga', control_extintores.fecha_prox_recarga);
             if (control_extintores.id) $('#controlExtintorId').val(control_extintores.id);
         }else{
             $('#controlExtintorId').val('');
@@ -772,7 +840,7 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         await mostrarFormularioControlExtintor(control_extintores, id_cliente, 'editar');
     };
 
-    function viewImage(image, marca, fecha) {
+    /*function viewImage(image, marca, fecha) {
         // Get modal elements
         const modalImage = document.getElementById('modalImage');
         const modalTitle = document.getElementById('imageModalLabel');
@@ -792,7 +860,36 @@ async function cargarLocalidadesYSubareas(clienteId, localidadId = null, subarea
         imageModal.show();
     }
 
-    window.viewImage = viewImage;
+    window.viewImage = viewImage;*/
+
+    window.viewImageById = function(id) {
+        showLoading();
+
+        $.ajax({
+            url: `/api/control-extintor/${id}/imagen`,
+            type: 'GET',
+            success: function(data) {
+                // La imagen viene como URL del bucket R2; se mantiene base64 por compatibilidad
+                const imageSrc = data.url ? data.url : `data:image/jpg;base64,${data.image}`;
+
+                $('#modalImage').attr('src', imageSrc);
+                $('#imageModalLabel').text(`Marca: ${data.marca} | Fecha: ${data.fecha}`);
+                $('#downloadImage')
+                    .attr('href', imageSrc)
+                    .attr('download', `imagen_${data.marca}_${data.fecha}.jpg`);
+
+                const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+                imageModal.show();
+            },
+            error: function(xhr) {
+                showToast('No se pudo cargar la imagen del extintor', 'error');
+            },
+            complete: function() {
+                hideLoading();
+            }
+        });
+    };
+
 
 
     flatpickr(".flatpickr-month", {

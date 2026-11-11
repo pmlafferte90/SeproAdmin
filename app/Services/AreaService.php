@@ -218,7 +218,7 @@ class AreaService
             if (isset($filtros['id_area'])) {
                 $query->where('sub_area.id_area', $filtros['id_area']);
             }
-            if (isset($filtros['buscar'])) {
+            /*if (isset($filtros['buscar'])) {
                 $query->where(function ($q) use ($filtros) {
                     $q->where('sub_area.nombre', 'like', "%{$filtros['buscar']}%")
                       ->orWhere('sub_area.codigo', 'like', "%{$filtros['buscar']}%")
@@ -228,7 +228,27 @@ class AreaService
                       ->orWhere('sub_area.unidad', 'like', "%{$filtros['buscar']}%")
                       ->orWhere('area.nombre', 'like', "%{$filtros['buscar']}%");
                 });
+            }*/
+
+            if (!empty($filtros['buscar'])) {
+                $palabras = preg_split('/\s+/', $filtros['buscar'], -1, PREG_SPLIT_NO_EMPTY);
+
+                $query->where(function ($q) use ($palabras) {
+                    foreach ($palabras as $palabra) {
+                        $q->where(function ($subq) use ($palabra) {
+                            $subq->where('sub_area.nombre', 'like', "%{$palabra}%")
+                                ->orWhere('sub_area.codigo', 'like', "%{$palabra}%")
+                                ->orWhere('sub_area.clase', 'like', "%{$palabra}%")
+                                ->orWhere('sub_area.marca', 'like', "%{$palabra}%")
+                                ->orWhere('sub_area.peso', 'like', "%{$palabra}%")
+                                ->orWhere('sub_area.unidad', 'like', "%{$palabra}%")
+                                ->orWhere('area.nombre', 'like', "%{$palabra}%");
+                        });
+                    }
+                });
             }
+
+
             // Comprobar si se requiere paginación
             $perPage = isset($filtros['perPage']) ? $filtros['perPage'] : 5; // Definir un valor predeterminado
             return $query->paginate($perPage); // Paginación
@@ -332,6 +352,9 @@ class AreaService
                 ->where('id_cliente_localidad', $idLocalidad)
                 ->where('areas_empresa.estado', 1)
                 ->whereHas('subArea.area', function ($q) {
+                    $q->where('area.estado', 1);
+                })
+                ->whereHas('subArea', function ($q) {
                     $q->where('estado', 1);
                 })
                 ->count();

@@ -22,6 +22,7 @@ use App\Services\RepresentanteService;
 use App\Services\EmailService;
 use App\Helpers\AccesoHelper;
 use App\Helpers\Utils;
+use App\Imports\ControlExtintoresImport;
 
 class 
 ExtintorController extends Controller
@@ -218,9 +219,9 @@ ExtintorController extends Controller
             $controlExtintores = $this->extintorService->get_control_extintor($id_cliente, $request);
             $ultimoControlExtintor = $this->extintorService->getUltimoControl($id_cliente, $request->query('localidad'));
             $areas = $this->areaService->get_areas_by_cliente($id_cliente);
-            $clases = $this->extintorService->getClases(['estado'=>1]);
-            $marcas = $this->extintorService->getMarcas(['estado'=>1]);
-            $pesos = $this->extintorService->getPesos(['estado'=>1]);
+            //$clases = $this->extintorService->getClases(['estado'=>1]);
+            //$marcas = $this->extintorService->getMarcas(['estado'=>1]);
+            //$pesos = $this->extintorService->getPesos(['estado'=>1]);
             $nomenclaturas = $this->nomenclaturaService->getNomenclaturasByTipo(['estado'=>1]);
             $clientes = $this->clienteService->obtenerClientesActivos($id_cliente);
             $localidad = $this->clienteLocalidadService->getLocalidadById($id_localidad);
@@ -230,7 +231,7 @@ ExtintorController extends Controller
             $nombreLocalidad = $localidad->nombre;
             $emails = $this->representanteService->obtenerCorreosPorCliente($id_cliente);
 
-            return view('Submenus.control_extintor', compact('controlExtintores', 'id_cliente','areas','clases','marcas','pesos', 'nomenclaturas','clientes', 'ultimoControlExtintor', 'nombreCliente', 'nombreLocalidad', 'emails', 'totalExtintoresxLocalidad'));
+            return view('Submenus.control_extintor', compact('controlExtintores', 'id_cliente','areas', 'nomenclaturas','clientes', 'ultimoControlExtintor', 'nombreCliente', 'nombreLocalidad', 'emails', 'totalExtintoresxLocalidad', 'id_localidad'));
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
@@ -300,7 +301,8 @@ ExtintorController extends Controller
                 'observaciones' => 'nullable|string',
                 'observaciones_generales' => 'nullable|array',
                 'observaciones_generales.*' => 'exists:nomenclatura,id',
-                'imagen' => 'nullable|image|max:2048',
+                'imagen' => 'nullable|image|max:20480',
+                'id_usuario' => 'nullable|exists:ci_users,id',
                 'fecha_revision'       => ['required','date',
                     function ($attr, $value, $fail) use ($request) {
                         $exists = $this->extintorService->existsControlExtintor(
@@ -359,8 +361,14 @@ ExtintorController extends Controller
                 'mano' => 'required|exists:nomenclatura,id',
                 'seguro' => 'required|exists:nomenclatura,id',
                 'cilindro' => 'required|exists:nomenclatura,id',
-                'fecha_recarga' => 'required|date',
-                'fecha_proxima_recarga' => 'required|date|after_or_equal:fecha_recarga',
+                // Nullables: los controles antiguos no tienen estos datos y deben poder reguardarse sin completarlos
+                'fecha_recarga' => 'nullable|date',
+                'fecha_proxima_recarga' => ['nullable', 'date', function ($attr, $value, $fail) use ($request) {
+                    $fechaRecarga = $request->input('fecha_recarga');
+                    if ($fechaRecarga && $value && strtotime($value) < strtotime($fechaRecarga)) {
+                        $fail('La fecha próxima de recarga debe ser posterior o igual a la fecha de recarga.');
+                    }
+                }],
                 'fecha_fabricacion' => 'nullable|date',
                 'fecha_prueba_hidrostatica' => 'nullable|date',
                 'area_seguridad' => 'nullable|exists:nomenclatura,id',
@@ -369,13 +377,13 @@ ExtintorController extends Controller
                 'flecha_ubicacion' => 'nullable|exists:nomenclatura,id',
                 'silueta' => 'nullable|exists:nomenclatura,id',
                 'rectangulo_instalacion' => 'nullable|exists:nomenclatura,id',
-                'hidrante' => 'required|exists:nomenclatura,id',
+                'hidrante' => 'nullable|exists:nomenclatura,id',
                 'dimension_vidrio' => 'nullable|string',
-                'observaciones_marbete' => 'required|string',
+                'observaciones_marbete' => 'nullable|string',
                 'observaciones' => 'nullable|string',
                 'observaciones_generales' => 'nullable|array',
                 'observaciones_generales.*' => 'exists:nomenclatura,id',
-                'imagen' => 'nullable|image|max:2048', // Limitar a 2MB
+                'imagen' => 'nullable|image|max:20480', // Limitar a 2MB
                 'fecha_revision'       => ['required','date',
                     /*function ($attr, $value, $fail) use ($request) {
                         $exists = $this->extintorService->existsControlExtintor(
@@ -516,6 +524,8 @@ ExtintorController extends Controller
         $accesorios = $service->getAccesoriosExtintores($cliente, $fechaRevision);
         $novedadesGabinete = $service->getNovedadesGabinete($cliente, $fechaRevision);
         $novedadesEspeciales = $service->getNovedadesEspeciales($cliente, $fechaRevision);
+        $observacionesInternas = $service->getObservacionesInternas($cliente, $fechaRevision);
+
 
         return response()->json([
             'cliente'              => $cliente,
@@ -526,6 +536,7 @@ ExtintorController extends Controller
             'accesorios_extintor'  => $accesorios,
             'novedades_gabinete'   => $novedadesGabinete,
             'novedades_especiales' => $novedadesEspeciales,
+            'observacionesInternas' => $observacionesInternas
         ]);
     }
 
@@ -571,4 +582,88 @@ ExtintorController extends Controller
         }
     }
 
+    public function obtenerImagen($id)
+    {
+        try {
+            $imagen = $this->extintorService->obtenerImagenObservacion($id);
+
+            if (!$imagen) {
+                return response()->json(['error' => 'Imagen no encontrada'], 404);
+            }
+
+            return response()->json($imagen);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error interno del servidor'], 500);
+        }
+    }
+
+    public function handleImportControles(Request $request, ControlExtintoresImport $importer)
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:csv,txt,xlsx|max:20480',
+        ]);
+
+        $path = $request->file('archivo')->store('imports');
+
+        try {
+            Excel::import($importer, $path, 'local');
+
+            $raw = $importer->errors();
+
+            $counts = [
+                '__omit_empty__'             => 0,
+                '__omit_no_localidad__'      => 0,
+                '__omit_auditor_not_found__' => 0,
+                '__omit_no_area__'           => 0,
+                '__omit_area_not_found__'    => 0,
+                '__omit_no_subarea__'        => 0,
+                '__omit_subarea_not_found__' => 0,
+                '__omit_bad_dates__'         => 0,
+            ];
+
+            $others = [];
+            foreach ($raw as $e) {
+                if (isset($counts[$e])) {
+                    $counts[$e]++;
+                    continue;
+                }
+
+                if (str_starts_with($e, '__omit_area_not_found__')) {
+                    $counts['__omit_area_not_found__']++;
+                    continue;
+                }
+                if (str_starts_with($e, '__omit_subarea_not_found__')) {
+                    $counts['__omit_subarea_not_found__']++;
+                    continue;
+                }
+                $others[] = $e;
+            }
+
+            $warnings = [];
+            if ($counts['__omit_empty__'] > 0)              $warnings[] = "Se omitieron {$counts['__omit_empty__']} filas vacías.";
+            if ($counts['__omit_no_localidad__'] > 0)       $warnings[] = "Se omitieron {$counts['__omit_no_localidad__']} filas sin id_localidad.";
+            if ($counts['__omit_auditor_not_found__'] > 0)  $warnings[] = "Se omitieron {$counts['__omit_auditor_not_found__']} filas por auditor no encontrado.";
+            if ($counts['__omit_no_area__'] > 0)            $warnings[] = "Se omitieron {$counts['__omit_no_area__']} filas sin área.";
+            if ($counts['__omit_area_not_found__'] > 0)     $warnings[] = "Se omitieron {$counts['__omit_area_not_found__']} filas por área no encontrada.";
+            if ($counts['__omit_no_subarea__'] > 0)         $warnings[] = "Se omitieron {$counts['__omit_no_subarea__']} filas sin subárea.";
+            if ($counts['__omit_subarea_not_found__'] > 0)  $warnings[] = "Se omitieron {$counts['__omit_subarea_not_found__']} filas por subárea no encontrada (filtrada por área).";
+            if ($counts['__omit_bad_dates__'] > 0)          $warnings[] = "Se omitieron {$counts['__omit_bad_dates__']} filas con fechas inválidas.";
+
+            $warnings = array_merge($warnings, $others);
+
+            return response()->json([
+                'status'   => empty($warnings) ? 'success' : 'warning',
+                'message'  => empty($warnings) ? '¡Importación completada correctamente!' : 'Importación finalizada con advertencias.',
+                'warnings' => $warnings,
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Error al importar: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    
 }

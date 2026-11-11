@@ -169,8 +169,8 @@ class ControlExtintorExport implements FromView, WithDrawings, WithDefaultStyles
         $nomenclatura = new Drawing();
         $nomenclatura->setName('Nomenclaturas');
         $nomenclatura->setDescription('Nomenclaturas');
-        $nomenclatura->setPath(public_path('img/nomenclaturas.jpg')); // Imagen cargada
-        $nomenclatura->setHeight(300); // ajusta si es necesario
+        $nomenclatura->setPath(public_path('img/nomenclaturas.png')); // Imagen cargada
+        $nomenclatura->setHeight(330); // ajusta si es necesario
         $nomenclatura->setCoordinates('D2'); // puede ser otra columna si deseas separarla
 
         return [$logo, $nomenclatura];

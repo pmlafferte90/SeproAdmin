@@ -84,7 +84,7 @@ class UsuarioService
             'rol_id'        => 'required|exists:roles,id',
             'nombre'     => 'required|string|max:100',
             'apellido'   => 'required|string|max:100',
-            'email'      => 'required|email|max:150|unique:ci_users,email',
+            'email'      => 'required|email|max:150',
         ], [
             'email.required' => 'Por favor, ingresa un correo electrónico.',
             'email.email'    => 'El correo electrónico no es válido.',
@@ -118,7 +118,7 @@ class UsuarioService
         // Validar el request
         $validator = Validator::make($request->all(), [
             //'usuario'   => ['required', 'string', 'max:25', Rule::unique('ci_users')->ignore($id)],
-            'email'     => ['required', 'email', 'max:150', Rule::unique('ci_users')->ignore($id)],
+            'email'     => ['required', 'email', 'max:150'],
             'nombre'    => ['required', 'string', 'max:100'],
             'apellido'  => ['required', 'string', 'max:100'],
             'rol_id'    => ['required', 'exists:roles,id'],

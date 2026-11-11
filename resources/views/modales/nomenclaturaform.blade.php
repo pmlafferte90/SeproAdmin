@@ -1,4 +1,4 @@
-<div class="modal fade" id="nomenclaturaModal" tabindex="-1" aria-labelledby="nomenclaturaModalLabel" aria-hidden="true">
+<div class="modal fade" id="nomenclaturaModal" tabindex="-1" aria-labelledby="nomenclaturaModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -10,8 +10,8 @@
         <div class="modal-body">
         <input type="hidden" id="nomenclaturaId" name="nomenclaturaId"  value="{{ $nomenclatura->id ?? '' }}">
          <!-- Combo box para áreas activas -->
-         <div class="form-group">
-            <label for="tipo">Tipo:</label>
+         <div class="form-group mb-3">
+            <label for="tipo" class="form-label">Tipo:</label>
             <select class="form-control" id="id_tipo" name="id_tipo" required>
                 <option value="">Seleccione un tipo</option>
                 @foreach($tipoNomenclatura as $tipo)

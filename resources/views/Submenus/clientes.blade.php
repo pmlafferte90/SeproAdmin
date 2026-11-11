@@ -93,14 +93,17 @@
                                 onclick="editarCliente('{{ $cliente->id }}')">
                                 <i class="fas fa-pen"></i>
                             </button>
-                            <a href="{{ url('area_empresa/' . $cliente->id) }}"
+                            <a
                                 class="btn btn-area-empresa btn-sm {{ $cliente->estado == 0 ? 'disabled' : '' }}"
-                                title="Áreas Empresa">
+                                title="Nueva localidad"
+                                data-id-cliente="{{ $cliente->id }}"
+                                onclick="nuevaLocalidad('{{ $cliente->id }}')">
                                 <i class="fas fa-plus"></i>
                             </a>
+
                             <button class="btn btn-sm {{ $cliente->estado == 1 ? 'btn-eliminar' : 'btn-success' }}"
                                 title="{{ $cliente->estado == 1 ? 'Eliminar' : 'Restaurar' }}"
-                                onclick="cambiarEstadoCliente('{{ $cliente->id }}', '{{ $cliente->estado }}')">
+                                onclick="cambiarEstadoCliente('{{ $cliente->id }}', {{ $cliente->estado }})">
                                 <i class="fas {{ $cliente->estado == 1 ? 'fa-trash' : 'fa-undo' }}"></i>
                             </button>
                             @endhasanyrole
@@ -115,14 +118,14 @@
                             <thead>
                                 <tr>
                                     <th>
-                                        @hasanyrole('Admin|Revisor')
+                                        {{-- @hasanyrole('Admin|Revisor')
                                         <button class="btn btn-sm agregar-localidad border"
                                             title="Nueva localidad"
                                             data-id-cliente="{{ $cliente->id }}"
                                             onclick="nuevaLocalidad('{{ $cliente->id }}')">
                                             +
                                         </button>
-                                        @endhasanyrole
+                                        @endhasanyrole --}}
                                     </th>
                                     <th>Nombre</th>
                                     <th>Dirección</th>

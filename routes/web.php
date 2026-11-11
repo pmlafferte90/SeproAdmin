@@ -82,6 +82,7 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::get('marca', [ExtintorController::class, 'get_marca'])->name('marca.get_marca');
             Route::get('peso', [ExtintorController::class, 'get_peso'])->name('peso.get_peso');
             Route::get('clase', [ExtintorController::class, 'get_clase'])->name('clase.get_clase');
+            Route::post('extintores/controles/importar', [ExtintorController::class, 'handleImportControles'])->name('extintores.controles.import');
 
             //RUTAS WEBS DE AREAS
             Route::group(['prefix' => 'area', 'middleware' => 'role:Admin'], function() {

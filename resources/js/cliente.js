@@ -126,42 +126,36 @@ window.nuevoCliente = function (id_cliente) {
     myModal.show();
 }
 
- window.cambiarEstadoCliente = function(clienteId, estadoActual) {
-     // Confirmación antes de proceder
-     // Definir el nuevo estado
-     let nuevoEstado = estadoActual == 1 ? 0 : 1;
-     let confirmacion =  estadoActual == 1 ? '¿Está seguro que desea inactivar el cliente?' : '¿Está seguro que desea reactivar el cliente?';
-     if (!confirm(confirmacion)) {
-         return;
-     }
-    // Datos a enviar en la petición
-    let data = {
-        estado: nuevoEstado
-    };
-    
-    // Realizar la petición fetch
-    fetch(`/api/cliente/actualizar_cliente/${clienteId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.ok) {
-            alert('Cliente actualizado con éxito');
-            location.reload(); // Recargar la página para reflejar los cambios
-        } else {
-            alert('Error al actualizar el cliente: ' + result.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Ocurrió un error inesperado');
+window.cambiarEstadoCliente = function (clienteId, estadoActual) {
+    const accion = estadoActual === 1 ? 'inactivar' : 'restaurar';
+    const nuevoEstado = estadoActual === 1 ? 0 : 1;
+    const mensaje = estadoActual === 1
+        ? "¿Está seguro que desea inactivar el cliente?"
+        : "¿Está seguro que desea restaurar el cliente?";
+
+    showConfirm(mensaje, () => {
+        showLoading();
+
+        $.ajax({
+            url: `/api/cliente/cambiar_estado/${clienteId}`,
+            type: 'PUT',
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content'),
+                estado: nuevoEstado
+            },
+            success: function (response) {
+                hideLoading();
+                showToast(response.message, "success", () => location.reload());
+            },
+            error: function () {
+                hideLoading();
+                showToast(`Hubo un error al intentar ${accion} el cliente.`, "error");
+            }
+        });
     });
 }
+
+
 
 window.irControlExtintorCliente = async function(clienteId, localidadId) {
   showLoading();
